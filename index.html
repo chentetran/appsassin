@@ -26,7 +26,20 @@
 	 	var request = new XMLHttpRequest();
 	 	var messageData;
 	 	var login;
-	 	var gameID
+	 	var gameID;
+
+	 	// called by pressing "I've assassinated my target" button
+	 	function assignNext() {
+	 		login = $('#name').val();
+	 		gameID = $('#gameid').val();
+
+	 		request.open("POST", "http://localhost:3000/nextTarget", true);
+	 		request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	 		request.openreadystatechange = function() {
+
+	 		}
+	 		request.send("login=" + login + "&gameID=" + gameID);
+	 	}
 
 	 	// called by pressing "Get Target" button
 	 	function getTarget() {

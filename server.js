@@ -57,6 +57,121 @@ app.post('/sendName', function(request, response) {
 });
 
 
+// takes login and gameID from client
+// eliminates client's target from db 
+// and assigns new target to user
+app.post('/nextTarget', function(request, response) {
+	response.header("Access-Control-Allow-Origin", "*");
+  	response.header("Access-Control-Allow-Headers", "X-Requested-With");
+
+  	var login = request.body.login;
+  	var gameID = Number(request.body.gameID);
+  	var targetName;
+  	var newTarget;
+  	var cursor = db.collection('players');
+
+  	cursor.find({"login":login, "gameID":gameID}).toArray(function(err, arr){
+  		// target = arr[0]["target"];
+  		targetName = arr[0]["target"];
+
+  		
+  		cursor.find({"login":targetName,"gameID":gameID}).toArray(function(err, arr2) {
+  			newTarget = arr2[0]["target"];
+  			// if (newTarget == null) {
+	  		// 	// if only one player left in gameID, must be winner
+	  		// 	cursor.find({"gameID":gameID}).toArray(function(err, arr3) {
+	  		// 		if (arr2.length === 1) {
+	  		// 			response.send('You won!');
+	  		// 		}
+	  		// 	});
+  			// }
+  			// else {
+		  		cursor.remove({"login":targetName,"gameID":gameID});
+		  		cursor.update(
+		  			{"login":login, "gameID":gameID},
+		  			{
+		  				$set: {
+		  					"target": newTarget
+		  				}
+		  			}
+		  		)
+		  		// if only one player left in gameID, must be winner
+	  			cursor.find({"gameID":gameID}).toArray(function(err, arr3) {
+	  				if (arr3.length === 1) {
+	  					cursor.remove({});
+	  					response.send('You won!');
+	  				}
+	  				else {
+		  				response.send(newTarget);
+	  				}
+	  			});
+		  	// }
+  		});
+  		
+  	});
+});
+
+
+function assign(players_arr, gameID) {
+	console.log(players_arr);
+	var cursor = db.collection('players');
+
+	shuffle(players_arr);
+
+	var newTarget;
+
+	cursor.find({gameID:gameID}).forEach(function(doc) {
+		if (doc.login != players_arr[players_arr.length - 1].login) {
+			newTarget = players_arr.pop().login;
+			
+			db.collection('players').update(
+					{"_id":doc._id},
+					{
+						$set: {
+							"target":newTarget
+						}
+					}
+			)
+			
+		} 
+		else if (doc.login != players_arr[0].login) {
+			newTarget = players_arr.shift().login;
+			
+			db.collection('players').update(
+				{"_id":doc._id},
+				{
+					$set: {
+						"target":newTarget
+					}
+				}
+			)
+			
+		}
+		else {
+			// if player doesnt have a target, assign it to target "failnonefail02857"
+			// this will fail badly if a user has login "failnonefail02857"
+			db.collection('players').update(
+				{"_id":doc._id},
+				{
+					$set: {
+						"target":"failnonefail02857"
+					}
+				}
+			)
+		}
+	});
+
+	// account for player not getting a target
+	cursor.find({"gameID":gameID, "target":"failnonefail02857"}).toArray(function(err, arr){
+		if (arr.length > 0) { // there exists players with no target
+			console.log("arr.length == " + arr.length);
+			assign(players_arr, gameID);
+		}
+	});
+
+	return;
+}
+
 // takes gameID from client
 // assigns targets to all players in db with given gameID
 app.post('/assignTargets', function(request, response) {
@@ -70,25 +185,10 @@ app.post('/assignTargets', function(request, response) {
 			response.send('failure in finding "players"');
 		}
 		else {
-			shuffle(players_arr);
 
-			var i = 0;
+			assign(players_arr, gameID);
 
-			// TODO: account for players being assigned to themselves
-
-			cursor.find({gameID:gameID}).forEach(function(doc) {
-				db.collection('players').update(
-						{"_id":doc._id},
-						{
-							$set: {
-								"target":players_arr[i].login
-							}
-						}
-					)
-				i++;
-			});
-
-			response.send('success');
+			response.send();
 		}
 	});
 });
@@ -102,13 +202,18 @@ app.get('/getTarget', function(request, response) {
 	var login = request.query.login;
 	var gameID = Number(request.query.gameID);
 
-	db.collection('players').find({"login":login, "gameID":gameID}).toArray(function(err, arr){
-		if(err) response.send("couldn't find target");
-		else {
-			// assuming only one document found
-			response.send(arr[0].target);
-		}
-	});
+	if(login && gameID) {
+		db.collection('players').find({"login":login, "gameID":gameID}).toArray(function(err, arr){
+			if(err) response.send("couldn't find target");
+			else {
+				// assuming only one document found
+				response.send(arr[0].target);
+			}
+		});
+	}
+	else {
+		response.send("Name or Game ID invalid");
+	}
 });
 
 function shuffle(a) {
