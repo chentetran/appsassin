@@ -17,7 +17,7 @@
 	<p><button type="button" id="clickToGet" onclick="getTarget()">Get Target</button></p>
 	<p><button type="button" id="nextTarget" onclick="assignNext()">I've assassinated my target</button></p>
 
-	<form method="post" enctype="multipart/form-data" action="http://localhost:3000/uploadPhoto">
+	<form method="post" enctype="multipart/form-data" action="https://peaceful-cove-69430.herokuapp.com/uploadPhoto">
 	    <input type="file" name="photo">
 	    <input type="submit" value="Submit">
 	</form>
@@ -29,6 +29,7 @@
 
 	<script type="text/javascript">
 	 	var request = new XMLHttpRequest();
+	 	var server = "https://peaceful-cove-69430.herokuapp.com";
 	 	var messageData;
 	 	var login;
 	 	var gameID;
@@ -38,7 +39,7 @@
 	 		login = $('#name').val();
 	 		gameID = $('#gameid').val();
 
-	 		request.open("POST", "http://localhost:3000/nextTarget", true);
+	 		request.open("POST", server + "/nextTarget", true);
 	 		request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 	 		request.openreadystatechange = function() {
 
@@ -51,7 +52,7 @@
 	 		login = $('#name').val();
 	 		gameID = $('#gameid').val();
 
-	 		request.open("GET", "http://localhost:3000/getTarget?login=" + login + "&gameID=" + gameID, true);
+	 		request.open("GET", server + "/getTarget?login=" + login + "&gameID=" + gameID, true);
 	 		request.onreadystatechange = function() {
 	 			if (request.readyState == 4 && request.status == 200) {
 	 				messageData = request.responseText;
@@ -68,7 +69,7 @@
 	 	function assign() {
 	 		gameID = $('#gameid').val();
 
-	 		request.open("POST", "http://localhost:3000/assignTargets", true);
+	 		request.open("POST", server + "/assignTargets", true);
 	 		request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 	 		request.onreadystatechange = function() {
 	 			$("#gameStatus").html("Game started!");
@@ -82,7 +83,7 @@
 	 		login = $('#name').val();
 	 		gameID = $('#gameid').val();
 
-	 		request.open("POST", "http://localhost:3000/sendName", true);
+	 		request.open("POST", server + "/sendName", true);
 	 		request.onreadystatechange = parse;
 	 		request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 	 		request.send("login=" + login + "&gameID=" + gameID);
