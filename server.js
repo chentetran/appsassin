@@ -1,12 +1,12 @@
 // Initialization
 var express = require('express');
-
+var multer = require('multer');
 var bodyParser = require('body-parser'); // Required if we need to use HTTP query or post parameters
-// var validator = require('validator');
+
 var app = express();
-// See https://stackoverflow.com/questions/5710358/how-to-get-post-query-in-express-node-js
+
 app.use(bodyParser.json());
-// See https://stackoverflow.com/questions/25471856/express-throws-error-as-body-parser-deprecated-undefined-extended
+app.use(multer({dest:'./images/'}).any());
 app.use(bodyParser.urlencoded({ extended: true })); // Required if we need to use HTTP query or post parameters
 
 var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://localhost/appdb';
@@ -15,6 +15,18 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
   db = databaseConnection;
 });
 
+// upload photo with multer
+// should delete stored file after processing to block attacks
+// see http://stackoverflow.com/questions/23691194/node-express-file-upload
+app.post('/uploadPhoto', function(request, response) {
+	console.log('received')
+	console.log(request.files);
+	response.redirect('back');
+});
+
+app.get('/', function(request, response) {
+	response.sendFile(__dirname + '/index.html');
+});
 
 // receive login and gameID from client, returns json 
 // json includes list of other players' logins

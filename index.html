@@ -17,6 +17,11 @@
 	<p><button type="button" id="clickToGet" onclick="getTarget()">Get Target</button></p>
 	<p><button type="button" id="nextTarget" onclick="assignNext()">I've assassinated my target</button></p>
 
+	<form method="post" enctype="multipart/form-data" action="http://localhost:3000/uploadPhoto">
+	    <input type="file" name="photo">
+	    <input type="submit" value="Submit">
+	</form>
+
 	<div id="lobby"></div>
 	<h2 id="gameStatus"></h2>
 	<h2 id="target"></h2>
