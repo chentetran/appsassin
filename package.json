@@ -10,10 +10,13 @@
     "body-parser": "latest",
     "ejs": "latest",
     "express": "latest",
+    "formidable": "^1.0.17",
+    "fs-extra": "^0.27.0",
     "mongodb": "latest",
     "multer": "^1.1.0",
+    "quickthumb": "0.0.12",
     "unirest": "^0.4.2",
-    "util": "latest"
+    "util": "^0.10.3"
   },
   "engines": {
     "node": "0.12.7"

@@ -3,6 +3,10 @@ var express = require('express');
 var multer = require('multer');
 var bodyParser = require('body-parser'); // Required if we need to use HTTP query or post parameters
 var unirest = require('unirest');
+var formidable = require('formidable');
+var util = require('util');
+var fs = require('fs-extra');
+var qt = require('quickthumb');
 
 var app = express();
 
@@ -11,13 +15,50 @@ var sky_api_secret = "2cf82e0f29c44dd0b4649a9d8f4469f6";
 var service_root = 'http://api.skybiometry.com/fc/';
 
 app.use(bodyParser.json());
+app.use(qt.static(__dirname + '/'));
 app.use(multer({dest:'./images/'}).any());
 app.use(bodyParser.urlencoded({ extended: true })); // Required if we need to use HTTP query or post parameters
 
-var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://heroku_9j5jdjrb:b03itk1jq0sfjs4frffj73f57o@ds011311.mlab.com:11311/heroku_9j5jdjrb';
+var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://localhost/appdb';
 var MongoClient = require('mongodb').MongoClient, format = require('util').format;
 var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
   db = databaseConnection;
+});
+
+app.post('/uploadPhoto', function (request, response){
+  var form = new formidable.IncomingForm();
+  form.parse(request, function(err, fields, files) {
+    response.writeHead(200, {'content-type': 'text/plain'});
+    response.write('received upload:\n\n');
+    response.end(util.inspect({fields: fields, files: files}));
+  });
+
+  form.on('end', function(fields, files) {
+    /* Temporary location of our uploaded file */
+    var temp_path = this.openedFiles[0].path;
+    /* The file name of the uploaded file */
+    var file_name = this.openedFiles[0].name;
+    /* Location where we want to copy the uploaded file */
+    var new_location = 'uploads/';
+
+    fs.copy(temp_path, new_location + file_name, function(err) {  
+      if (err) {
+        console.error(err);
+      } else {
+        console.log("success!")
+      }
+    });
+  });
+
+  // unirest.get(service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + "http://localhost:8080/uploads/Vincnet2.jpg",
+  // 			  function(faceDetectResponse) {
+  // 			  		if ( faceDetectResponse.error ) {
+  // 			  			console.log('errored');
+  // 			  			return response.status(500).send({message: faceDetectResponse.error});
+  // 			  		}
+
+  // 			  		console.log("working!!!!!!");
+  // 			  });
 });
 
 // upload photo with multer
@@ -30,17 +71,18 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
 // });
 
 // faces/detect method for skybiometry
-app.post('/uploadPhoto', function(request, response){ 
-	unirest.get(service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + request.body.photo,
-				function(faceDetectResponse) {
-					if (faceDetectResponse.error) {
-						return response.send(500, {message: faceDetectResponse.error});
-					}
+// app.post('/uploadPhoto', function(request, response){ 
+// 	console.log(request.files);
+// 	unirest.get(service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + request.body.photo,
+// 				function(faceDetectResponse) {
+// 					if (faceDetectResponse.error) {
+// 						return response.status(500).send({message: faceDetectResponse.error});
+// 					}
 
-					console.log("working!!!!")
-					var body = faceDetectResponse.body;
-				});
-});
+// 					console.log("working!!!!")
+// 					var body = faceDetectResponse.body;
+// 				});
+// });
 
 app.get('/', function(request, response) {
 	response.sendFile(__dirname + '/index.html');
