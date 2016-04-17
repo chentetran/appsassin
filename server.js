@@ -2,8 +2,13 @@
 var express = require('express');
 var multer = require('multer');
 var bodyParser = require('body-parser'); // Required if we need to use HTTP query or post parameters
+var unirest = require('unirest');
 
 var app = express();
+
+var sky_api_key = "94268d2c6049471283eb781d34391c16";
+var sky_api_secret = "2cf82e0f29c44dd0b4649a9d8f4469f6";
+var service_root = 'http://api.skybiometry.com/fc/';
 
 app.use(bodyParser.json());
 app.use(multer({dest:'./images/'}).any());
@@ -25,10 +30,16 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
 // });
 
 // faces/detect method for skybiometry
-app.post('/uploadPhoto', function(request, response) {
-	console.log('received');
+app.post('/uploadPhoto', function(request, response){ 
+	unirest.get(service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + request.body.photo,
+				function(faceDetectResponse) {
+					if (faceDetectResponse.error) {
+						return response.send(500, {message: faceDetectResponse.error});
+					}
 
-	response.redirect('back');
+					console.log("working!!!!")
+					var body = faceDetectResponse.body;
+				});
 });
 
 app.get('/', function(request, response) {
