@@ -18,9 +18,16 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
 // upload photo with multer
 // should delete stored file after processing to block attacks
 // see http://stackoverflow.com/questions/23691194/node-express-file-upload
+// app.post('/uploadPhoto', function(request, response) {
+// 	console.log('received')
+// 	console.log(request.files);
+// 	response.redirect('back');
+// });
+
+// faces/detect method for skybiometry
 app.post('/uploadPhoto', function(request, response) {
-	console.log('received')
-	console.log(request.files);
+	console.log('received');
+
 	response.redirect('back');
 });
 
