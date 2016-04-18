@@ -18,6 +18,8 @@ app.use(bodyParser.json());
 app.use(qt.static(__dirname + '/'));
 app.use(multer({dest:'./images/'}).any());
 app.use(bodyParser.urlencoded({ extended: true })); // Required if we need to use HTTP query or post parameters
+app.use(express.static(__dirname + '/public')); //serve static content
+app.use(express.static(__dirname + '/images'));
 
 var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://localhost/appdb';
 var MongoClient = require('mongodb').MongoClient, format = require('util').format;
@@ -25,54 +27,18 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
   db = databaseConnection;
 });
 
-app.post('/uploadPhoto', function (request, response){
-  var form = new formidable.IncomingForm();
-  form.parse(request, function(err, fields, files) {
-    response.writeHead(200, {'content-type': 'text/plain'});
-    response.write('received upload:\n\n');
-    response.end(util.inspect({fields: fields, files: files}));
-  });
-
-  form.on('end', function(fields, files) {
-    /* Temporary location of our uploaded file */
-    var temp_path = this.openedFiles[0].path;
-    /* The file name of the uploaded file */
-    var file_name = this.openedFiles[0].name;
-    /* Location where we want to copy the uploaded file */
-    var new_location = 'uploads/';
-
-    fs.copy(temp_path, new_location + file_name, function(err) {  
-      if (err) {
-        console.error(err);
-      } else {
-        console.log("success!")
-      }
-    });
-  });
-
-  // unirest.get(service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + "http://localhost:8080/uploads/Vincnet2.jpg",
-  // 			  function(faceDetectResponse) {
-  // 			  		if ( faceDetectResponse.error ) {
-  // 			  			console.log('errored');
-  // 			  			return response.status(500).send({message: faceDetectResponse.error});
-  // 			  		}
-
-  // 			  		console.log("working!!!!!!");
-  // 			  });
-});
-
 // upload photo with multer
 // should delete stored file after processing to block attacks
 // see http://stackoverflow.com/questions/23691194/node-express-file-upload
-// app.post('/uploadPhoto', function(request, response) {
-// 	console.log('received')
-// 	console.log(request.files);
-// 	response.redirect('back');
-// });
+app.post('/uploadPhoto', function(request, response) {
+	console.log('received')
+	console.log(request.files);
+	response.redirect('back');
+});
 
-// faces/detect method for skybiometry
+// // faces/detect method for skybiometry
 // app.post('/uploadPhoto', function(request, response){ 
-// 	console.log(request.files);
+// 	console.log("hello " + request.body.photo);
 // 	unirest.get(service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + request.body.photo,
 // 				function(faceDetectResponse) {
 // 					if (faceDetectResponse.error) {
@@ -85,7 +51,7 @@ app.post('/uploadPhoto', function (request, response){
 // });
 
 app.get('/', function(request, response) {
-	response.sendFile(__dirname + '/index.html');
+	response.sendFile(__dirname + 'public/index.html');
 });
 
 // receive login and gameID from client, returns json 
