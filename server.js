@@ -109,7 +109,7 @@ app.post('/uploadPhoto', function(request, response){
 // to recognize a face
 // TODO: merge with assassinate button
 app.post('/assassinate', function(request, response){ 
-	unirest.get(service_root + "faces/recognize?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + "emerson" + "&urls=http://mtv.com/news/wp-content/uploads/geek/2012/09/michael_emerson_lost.jpg" + "&namespace=snapspace",
+	unirest.get(service_root + "faces/recognize?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + "emerson" + "&urls=https://scontent.xx.fbcdn.net/hphotos-frc3/v/t1.0-9/64462_10201531244550182_41135202_n.jpg?oh=2b9049442535594dff6067f83f6bbb94&oe=57ADF89E" + "&namespace=snapspace",
 				function(faceRecogResponse) {
 
 					if(faceRecogResponse.error) {
