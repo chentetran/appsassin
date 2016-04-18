@@ -32,13 +32,8 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
 // upload photo with multer
 // should delete stored file after processing to block attacks
 // see http://stackoverflow.com/questions/23691194/node-express-file-upload
-// app.post('/uploadPhoto', function(request, response) {
-// 	console.log('received')
-// 	console.log(request.files);
-// 	response.redirect('back');
-// });
-
 // faces/detect method for skybiometry
+// for calibrating one's own picture
 app.post('/uploadPhoto', function(request, response){ 
 	var imgPath = request.files[0]["path"];
 	var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
@@ -50,8 +45,31 @@ app.post('/uploadPhoto', function(request, response){
 					}
 
 					var body = faceDetectResponse.body;
+					var tags = "";
 
-					response.send(body);
+					// user should send photo with only one face
+					// so that face training isn't complicated
+					for (var i in body.tags) {
+						if (body.tags.length > 1) {
+							response.send(400, {message: "Send photo with only one face for calibration"});
+						}
+						else if (body.tags.length === 1) {
+							tags += body.tags[0].tid + ',';
+						}
+					}
+
+					// if no faces, error
+					if (body.tags.length === 0) {
+						response.send(400, {message: "no faces detected"});
+					}
+
+					console.log('tag ids are: ' + tags);
+
+					response.send('training...');
+
+
+					// response.send(body);
+					// response.redirect('back');
 				});
 });
 
