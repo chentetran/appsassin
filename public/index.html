@@ -17,7 +17,7 @@
 	<p><button type="button" id="clickToGet" onclick="getTarget()">Get Target</button></p>
 	<p><button type="button" id="nextTarget" onclick="assignNext()">I've assassinated my target</button></p>
 
-	<form method="post" enctype="multipart/form-data" action="http://localhost:3000/uploadPhoto">
+	<form method="post" enctype="multipart/form-data" action="https://peaceful-cove-69430.herokuapp.com/uploadPhoto">
 	    <input type="file" name="photo">
 	    <input type="submit" value="Submit">
 	</form>
@@ -29,7 +29,7 @@
 
 	<script type="text/javascript">
 	 	var request = new XMLHttpRequest();
-	 	var server = "http://localhost:3000";
+	 	var server = "https://peaceful-cove-69430.herokuapp.com";
 	 	var messageData;
 	 	var login;
 	 	var gameID;
