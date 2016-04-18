@@ -23,7 +23,7 @@ app.use(bodyParser.urlencoded({ extended: true })); // Required if we need to us
 app.use(express.static(__dirname + '/public')); //serve static content
 app.use(express.static(__dirname + '/images'));
 
-var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://heroku_9j5jdjrb:b03itk1jq0sfjs4frffj73f57o@ds011311.mlab.com:11311/heroku_9j5jdjrb';
+var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://localhost/appdb';
 var MongoClient = require('mongodb').MongoClient, format = require('util').format;
 var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
   db = databaseConnection;
@@ -35,8 +35,9 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
 // faces/detect method for skybiometry
 // for calibrating one's own picture
 app.post('/uploadPhoto', function(request, response){ 
-	var imgPath = request.files[0]["path"];
-	var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
+	// var imgPath = request.files[0]["path"];
+	// var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
+	var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=http://www.tvchoicemagazine.co.uk/sites/default/files/imagecache/interview_image/intex/michael_emerson.png";
 
 	unirest.get(link,
 				function(faceDetectResponse) {
@@ -55,7 +56,7 @@ app.post('/uploadPhoto', function(request, response){
 								response.send(400, {message: "Send photo with only one face for calibration"});
 							}
 							else if (body.photos[i].tags.length === 1) {
-								tags += body.tags[0].tid + ',';
+								tags += body.photos[i].tags[0].tid + ',';
 							}
 						}
 					}
@@ -66,10 +67,29 @@ app.post('/uploadPhoto', function(request, response){
 					}
 
 					console.log('tag ids are: ' + tags);
+					console.log('name is ' + request.body.userid);
+
+					// save tags
+					unirest.get(service_root + "tags/save?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uid=" + request.body.userid + "@snapspace" + "&tids=" + tags,
+								function(tagSaveResponse){
+									if (tagSaveResponse.error) {
+										return response.send(500, tagSaveResponse.error);										
+									}
+
+									// start face training
+									unirest.get(service_root + "faces/train?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + request.body.userid + "@snapspace",
+												function(faceTrainResponse) {
+													if (faceTrainResponse.error) {
+														return response.send(500, faceTrainResponse.error);
+													}
+
+													console.log('successfully trained a face');
+												});
+									
+								});
+
 
 					response.send('training...');
-
-
 					// response.send(body);
 					// response.redirect('back');
 				});
