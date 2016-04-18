@@ -34,6 +34,7 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
 // see http://stackoverflow.com/questions/23691194/node-express-file-upload
 // faces/detect method for skybiometry
 // for calibrating one's own picture
+// TODO: merge with /sendName
 app.post('/uploadPhoto', function(request, response){ 
 	// var imgPath = request.files[0]["path"];
 	// var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
@@ -123,14 +124,6 @@ app.post('/assassinate', function(request, response){
 
 					console.log(uid);
 					response.send(uid);
-
-
-					// // doesn't properly account for multiple tags, uids in image
-					// console.log(faceRecogResponse.body);
-
-					// // just assumes one uid, one tag
-					// response.send(faceRecogResponse.body.photos[0].tags[0].uids[0].uid);
-
 				});
 
 });
@@ -142,6 +135,7 @@ app.get('/', function(request, response) {
 // receive login and gameID from client, returns json 
 // json includes list of other players' logins
 // if login not present in db, return empty json
+// TODO: attach uid from skybio to ones doc in mongodb
 app.post('/sendName', function(request, response) {
 	response.header("Access-Control-Allow-Origin", "*");
   	response.header("Access-Control-Allow-Headers", "X-Requested-With");
