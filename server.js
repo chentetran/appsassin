@@ -120,7 +120,6 @@ app.post('/assassinate', function(request, response){
 						return response.status(400).send({message: "Sorry no faces detected"});
 					}
 
-					var tag = "";
 					var uid = [];
 
 
