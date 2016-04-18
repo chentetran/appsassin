@@ -23,7 +23,7 @@ app.use(bodyParser.urlencoded({ extended: true })); // Required if we need to us
 app.use(express.static(__dirname + '/public')); //serve static content
 app.use(express.static(__dirname + '/images'));
 
-var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://localhost/appdb';
+var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://heroku_9j5jdjrb:b03itk1jq0sfjs4frffj73f57o@ds011311.mlab.com:11311/heroku_9j5jdjrb';
 var MongoClient = require('mongodb').MongoClient, format = require('util').format;
 var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
   db = databaseConnection;
@@ -38,6 +38,8 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
 app.post('/uploadPhoto', function(request, response){ 
 	var imgPath = request.files[0]["path"];
 	var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
+	
+	// for local server:
 	// var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=http://www.tvchoicemagazine.co.uk/sites/default/files/imagecache/interview_image/intex/michael_emerson.png";
 	console.log(link);
 	unirest.get(link,
@@ -69,9 +71,17 @@ app.post('/uploadPhoto', function(request, response){
 
 					console.log('tag ids are: ' + tags);
 					console.log('name is ' + request.body.userid);
+					var uid = request.body.userid;
+
+					// TODO: check db if uid already used. if so, add number to end of uid
+					// db.collection('players').find({"uid":uid}).toArray(function(err, arr){
+					// 	if (arr.length != 0) { // someone already has that uid
+					// 		uid += arr.length; // append number to end of uid
+					// 	}
+					// });
 
 					// save tags
-					unirest.get(service_root + "tags/save?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uid=" + request.body.userid + "@snapspace" + "&tids=" + tags,
+					unirest.get(service_root + "tags/save?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uid=" + uid + "@snapspace" + "&tids=" + tags,
 								function(tagSaveResponse){
 									if (tagSaveResponse.error) {
 										return response.send(500, tagSaveResponse.error);										
