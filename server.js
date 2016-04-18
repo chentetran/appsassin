@@ -8,6 +8,8 @@ var util = require('util');
 var fs = require('fs-extra');
 var qt = require('quickthumb');
 
+var server = "http://peaceful-cove-69430.herokuapp.com/";
+
 var app = express();
 
 var sky_api_key = "94268d2c6049471283eb781d34391c16";
@@ -21,7 +23,7 @@ app.use(bodyParser.urlencoded({ extended: true })); // Required if we need to us
 app.use(express.static(__dirname + '/public')); //serve static content
 app.use(express.static(__dirname + '/images'));
 
-var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://heroku_9j5jdjrb:b03itk1jq0sfjs4frffj73f57o@ds011311.mlab.com:11311/heroku_9j5jdjrb';
+var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://localhost/appdb';
 var MongoClient = require('mongodb').MongoClient, format = require('util').format;
 var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
   db = databaseConnection;
@@ -30,25 +32,29 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
 // upload photo with multer
 // should delete stored file after processing to block attacks
 // see http://stackoverflow.com/questions/23691194/node-express-file-upload
-app.post('/uploadPhoto', function(request, response) {
-	console.log('received')
-	console.log(request.files);
-	response.redirect('back');
-});
-
-// // faces/detect method for skybiometry
-// app.post('/uploadPhoto', function(request, response){ 
-// 	console.log("hello " + request.body.photo);
-// 	unirest.get(service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + request.body.photo,
-// 				function(faceDetectResponse) {
-// 					if (faceDetectResponse.error) {
-// 						return response.status(500).send({message: faceDetectResponse.error});
-// 					}
-
-// 					console.log("working!!!!")
-// 					var body = faceDetectResponse.body;
-// 				});
+// app.post('/uploadPhoto', function(request, response) {
+// 	console.log('received')
+// 	console.log(request.files);
+// 	response.redirect('back');
 // });
+
+// faces/detect method for skybiometry
+app.post('/uploadPhoto', function(request, response){ 
+	var imgPath = request.files[0]["path"];
+	var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
+
+	console.log(link)
+
+	unirest.get(link,
+				function(faceDetectResponse) {
+					if (faceDetectResponse.error) {
+						return response.status(500).send({message: faceDetectResponse.error});
+					}
+
+					console.log("working!!!!")
+					var body = faceDetectResponse.body;
+				});
+});
 
 app.get('/', function(request, response) {
 	response.sendFile(__dirname + 'public/index.html');
@@ -233,12 +239,12 @@ app.post('/assignTargets', function(request, response) {
 
 // takes login and gameID from client
 // returns target as string
-app.get('/getTarget', function(request, response) {
+app.post('/getTarget', function(request, response) {
 	response.header("Access-Control-Allow-Origin", "*");
   	response.header("Access-Control-Allow-Headers", "X-Requested-With");
 
-	var login = request.query.login;
-	var gameID = Number(request.query.gameID);
+	var login = request.body.login;
+	var gameID = Number(request.body.gameID);
 
 	if(login && gameID) {
 		db.collection('players').find({"login":login, "gameID":gameID}).toArray(function(err, arr){
