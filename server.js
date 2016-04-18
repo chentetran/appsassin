@@ -43,16 +43,15 @@ app.post('/uploadPhoto', function(request, response){
 	var imgPath = request.files[0]["path"];
 	var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
 
-	console.log(link)
-
 	unirest.get(link,
 				function(faceDetectResponse) {
 					if (faceDetectResponse.error) {
 						return response.status(500).send({message: faceDetectResponse.error});
 					}
 
-					console.log("working!!!!")
 					var body = faceDetectResponse.body;
+
+					response.send(body);
 				});
 });
 
