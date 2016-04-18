@@ -113,11 +113,11 @@ app.post('/assassinate', function(request, response){
 				function(faceRecogResponse) {
 
 					if(faceRecogResponse.error) {
-						return response.send(500, faceRecogResponse.error);
+						return response.status(500).send(faceRecogResponse.error);
 					}
 					// API can give success response, but not have detected any face
 					else if (!faceRecogResponse.body.photos[0].tags || !faceRecogResponse.body.photos[0].tags[0]) {
-						return response.send(400, {message: "Sorry no faces detected"})
+						return response.status(400).send({message: "Sorry no faces detected"});
 					}
 
 					var tag = "";
