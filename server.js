@@ -49,17 +49,19 @@ app.post('/uploadPhoto', function(request, response){
 
 					// user should send photo with only one face
 					// so that face training isn't complicated
-					for (var i in body.tags) {
-						if (body.tags.length > 1) {
-							response.send(400, {message: "Send photo with only one face for calibration"});
-						}
-						else if (body.tags.length === 1) {
-							tags += body.tags[0].tid + ',';
+					for (var i in body.photos) {
+						if (body.photos[i].tags) { 
+							if (body.photos[i].tags.length > 1) {
+								response.send(400, {message: "Send photo with only one face for calibration"});
+							}
+							else if (body.photos[i].tags.length === 1) {
+								tags += body.tags[0].tid + ',';
+							}
 						}
 					}
 
 					// if no faces, error
-					if (body.tags.length === 0) {
+					if (tags.length === 0) {
 						response.send(400, {message: "no faces detected"});
 					}
 
