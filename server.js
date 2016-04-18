@@ -132,7 +132,7 @@ app.post('/assassinate', function(request, response){
 						}
 					}
 
-					console.log(uid);
+					console.log(faceRecogResponse.body)
 					response.send(uid);
 				});
 
