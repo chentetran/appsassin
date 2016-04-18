@@ -17,9 +17,9 @@
 	<p><button type="button" id="clickToGet" onclick="getTarget()">Get Target</button></p>
 	<p><button type="button" id="nextTarget" onclick="assignNext()">I've assassinated my target</button></p>
 
-	
 
-	<form method="post" enctype="multipart/form-data" action="https://peaceful-cove-69430.herokuapp.com/uploadPhoto">
+	
+	<form method="post" enctype="multipart/form-data" action="https://peaceful-cove-69430.herokuapp.com/calibratePhoto">
 		Username: <input type="text" name="userid">
 	    <input type="file" name="photo">
 	    <input type="submit" value="Submit">
@@ -86,7 +86,7 @@
 	 		login = $('#name').val();
 	 		gameID = $('#gameid').val();
 
-	 		request.open("POST", server + "/sendName", true);
+	 		request.open("POST", server + "/joinGame", true);
 	 		request.onreadystatechange = parse;
 	 		request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 	 		request.send("login=" + login + "&gameID=" + gameID);
