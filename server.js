@@ -36,10 +36,10 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
 // for calibrating one's own picture
 // TODO: merge with /sendName
 app.post('/uploadPhoto', function(request, response){ 
-	// var imgPath = request.files[0]["path"];
-	// var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
-	var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=http://www.tvchoicemagazine.co.uk/sites/default/files/imagecache/interview_image/intex/michael_emerson.png";
-
+	var imgPath = request.files[0]["path"];
+	var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
+	// var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=http://www.tvchoicemagazine.co.uk/sites/default/files/imagecache/interview_image/intex/michael_emerson.png";
+	console.log(link);
 	unirest.get(link,
 				function(faceDetectResponse) {
 					if (faceDetectResponse.error) {
