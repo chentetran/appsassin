@@ -95,6 +95,46 @@ app.post('/uploadPhoto', function(request, response){
 				});
 });
 
+// to recognize a face
+// TODO: merge with assassinate button
+app.post('/assassinate', function(request, response){ 
+	unirest.get(service_root + "faces/recognize?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + "emerson" + "&urls=http://mtv.com/news/wp-content/uploads/geek/2012/09/michael_emerson_lost.jpg" + "&namespace=snapspace",
+				function(faceRecogResponse) {
+
+					if(faceRecogResponse.error) {
+						response.send(500, faceRecogResponse.error);
+					}
+					// API can give success response, but not have detected any face
+					else if (!faceRecogResponse.body.photos[0].tags || !faceRecogResponse.body.photos[0].tags[0]) {
+						response.send(400, {message: "Sorry no faces detected"})
+					}
+
+					var tag = "";
+					var uid = [];
+
+
+					for (var i in faceRecogResponse.body.photos[0].tags) {	
+						if (faceRecogResponse.body.photos[0].tags[i].uids) { // api has a guess who it is
+							for (var j in faceRecogResponse.body.photos[0].tags[i].uids) {
+								uid.unshift(faceRecogResponse.body.photos[0].tags[i].uids[j].uid);
+							}
+						}
+					}
+
+					console.log(uid);
+					response.send(uid);
+
+
+					// // doesn't properly account for multiple tags, uids in image
+					// console.log(faceRecogResponse.body);
+
+					// // just assumes one uid, one tag
+					// response.send(faceRecogResponse.body.photos[0].tags[0].uids[0].uid);
+
+				});
+
+});
+
 app.get('/', function(request, response) {
 	response.sendFile(__dirname + 'public/index.html');
 });
