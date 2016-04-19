@@ -216,46 +216,50 @@ app.post('/joinGame', function(request, response) {
 
 	// check if gameID is in use
 	db.collection('players').find( {game: { $elemMatch: { gameID:gameID, gameStatus:{$ne:"waiting"} }} } ).toArray(function(err, arr) {
-		console.log(arr);
-		for (var i in arr) {
-			if (arr[i].username == username) {
-				return response.send('Already in game!');
-			}
-		}
+		if (err) return response.send("Error");
 
-		// TODO: elemMatch and above loop dont properly function
-		// goal is to check is Gameid is in use/player is already in game
-		// but doesnt work
 
 		if (arr.length > 0) { // gameID already used
 			return response.send('Game ID already used');
 		}
 
+		db.collection('players').find( {game: { $elemMatch: { gameID:gameID, gameStatus:"waiting" }} } ).toArray(function(err, arr) {
+			if (err) return response.send("Error");
 
-		game = {
-			"gameID":gameID,
-			"target":null,
-			"gameStatus":"waiting"
-		};
-
-		db.collection('players').find({username:username}).toArray(function(err, toJoin) {
-			if (err) return response.send("Oops! Something went wrong!");
-
-			toJoin[0].game.push(game);
-
-			db.collection('players').update(
-				{username: username},
-				{
-					$set: {
-						"game":toJoin[0].game
-					}
+			// check if player is already in lobby
+			for (var i in arr) {
+				if (arr[i].username == username) {
+					return response.send('Already in game!');
 				}
+			}
 
-			)
+			game = {
+				"gameID":gameID,
+				"target":null,
+				"gameStatus":"waiting"
+			};
 
+			db.collection('players').find({username:username}).toArray(function(err, toJoin) {
+				if (err) return response.send("Oops! Something went wrong!");
+
+				toJoin[0].game.push(game);
+
+				db.collection('players').update(
+					{username: username},
+					{
+						$set: {
+							"game":toJoin[0].game
+						}
+					}
+
+				)
+
+			});
+
+			response.send(renderLobby(gameID));
 		});
 
-		response.send(renderLobby(gameID));
+
 	});
 });
 
