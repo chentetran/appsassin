@@ -1,7 +1,3 @@
-// TODO: Fix login system
-// see http://code.runnable.com/U108R8ihwn4m4TM5/user-creation-signup-and-login-with-express-4-and-mongodb-for-node-js
-
-
 // Initialization
 var express = require('express');
 var multer = require('multer');
@@ -11,7 +7,7 @@ var formidable = require('formidable');
 var util = require('util');
 var fs = require('fs-extra');
 var qt = require('quickthumb');
-var expressSession = require('express-session')
+var expressSession = require('express-session');
 
 // var server = "http://peaceful-cove-69430.herokuapp.com/";
 var server = "http://localhost:3000/"
@@ -28,6 +24,11 @@ app.use(multer({dest:'./images/'}).any());
 app.use(bodyParser.urlencoded({ extended: true })); // Required if we need to use HTTP query or post parameters
 app.use(express.static(__dirname + '/public')); //serve static content
 app.use(express.static(__dirname + '/images'));
+app.use( expressSession({
+  secret: 's3cr3t',
+  resave: false,
+  saveUninitialized: false
+}));
 
 var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://localhost/appdb';
 var MongoClient = require('mongodb').MongoClient, format = require('util').format;
@@ -35,8 +36,40 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
   db = databaseConnection;
 });
 
+// This is a middleware that we will use on routes where
+// we _require_ that a user is logged in, such as the /secret url
+function requireUser(req, res, next){
+  if (!req.user) {
+    res.redirect('/not_allowed');
+  } else {
+    next();
+  }
+}
+
+// This middleware checks if the user is logged in and sets
+// req.user and res.locals.user appropriately if so.
+function checkIfLoggedIn(req, res, next){
+  if (req.session.username) {
+    var coll = mongo.collection('players');
+    coll.findOne({username: req.session.username}, function(err, user){
+      if (user) {
+        // set a 'user' property on req
+        // so that the 'requireUser' middleware can check if the user is
+        // logged in
+        req.user = user;
+      }
+      
+      next();
+    });
+  } else {
+    next();
+  }
+}
+
 // Register for an account
 app.post('/register', function(request, response) {
+	request.session.username = request.body.username;
+
 	var username = request.body.username;
 	var password = request.body.password;
 	var name = request.body.name;
@@ -52,16 +85,18 @@ app.post('/register', function(request, response) {
 		if (arr.length > 0) { 	// someone already has username
 			return response.send("Username taken");
 		}
-		
+			
+		// var gameObj = {
+		// 				"gameID":null,
+		// 				"target":null,
+		// 				"gameStatus":null,
+		// 			  }
+
 		var toInsert = {
 			"username":username,
 			"password":password,
 			"name":name,
-			"game": {
-					"gameID":null,
-					"target":null,
-					"gameStatus":null,
-					}
+			"game": []
 		}
 
 		var imgPath = request.files[0]["path"];
@@ -117,7 +152,7 @@ app.post('/register', function(request, response) {
 														});
 	
 														response.set('Content-Type', 'text/html');
-														response.send(renderHome(username));
+														response.redirect('/home');
 													});
 						});
 		});
@@ -127,6 +162,8 @@ app.post('/register', function(request, response) {
 
 // Login to account
 app.post('/login', function(request, response) {
+	request.session.username = request.body.username;
+
 	var username = request.body.username;
 	var password = request.body.password;
 
@@ -135,7 +172,7 @@ app.post('/login', function(request, response) {
 		// assumes only one doc with given username
 		if (arr[0].password == password) {
 			response.set('Content-Type', 'text/html');
-			response.send(renderHome(username));
+			response.redirect('/home');
 		} else {
 			console.log("Wrong password. " + username + " tried logging in with " + password);
 			response.send("Wrong password!");
@@ -143,7 +180,8 @@ app.post('/login', function(request, response) {
 	});
 });
 
-function renderHome(username) {
+app.get('/home', function(request, response) {
+	var username = request.session.username;
 	var indexPage = "<!DOCTYPE html><html><head><title>" + username + "'s Home</title></head><body>";
 	var games = "<h1>My Games:</h1><ul>";
 
@@ -155,18 +193,35 @@ function renderHome(username) {
 
 	games += "</ul>"
 
-	var content = "<hr><h1>Join a Game</h1>";
+	var content = "<hr><h1>Join a Game</h1>" +
+				  '<form method="post" enctype="multipart/form-data" action="' + server + 'joinGame">' +
+				  '<p>Enter Game ID: <input type="text" name="gameID"></p>' + 
+				  '<input type="submit" value="Enter">';
+
 
 	// TODO: delete game once winner has been found from db!!!!
 
 	indexPage += games + content + "</body></html>"
-	return indexPage;
-}
+	response.send(indexPage);
+	
+});
+
+app.post('/joinGame', function(request, response) {
+	response.send('hi')
+});
+
 
 // TODO: make method for adding photos to train
 
 // TODO: make method for resetting photos
 // use tags/remove + faces/train
+
+/****************************************************************************************************************************/
+/****************************************************************************************************************************/
+/*************************************** ALL OF THE FOLLOW CODE WILL BE CHANGED *********************************************/
+/****************************************************************************************************************************/
+/****************************************************************************************************************************/
+
 
 // To recognize a face
 // TODO: merge with assassinate button
@@ -371,7 +426,8 @@ function shuffle(a) {
 }
 
 app.get('/', function(request, response) {
-	response.sendFile(__dirname + 'public/login.html');
+	response.set('Content-Type', 'text/html');
+	response.sendFile(__dirname + '/public/index.html');
 });
 
 app.listen(process.env.PORT || 3000);
