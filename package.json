@@ -8,8 +8,11 @@
   },
   "dependencies": {
     "body-parser": "latest",
+    "cookie-parser": "^1.4.1",
     "ejs": "latest",
+    "everyauth": "^0.4.9",
     "express": "latest",
+    "express-session": "^1.13.0",
     "favicon": "0.0.2",
     "formidable": "^1.0.17",
     "fs-extra": "^0.27.0",

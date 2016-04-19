@@ -8,7 +8,8 @@ var util = require('util');
 var fs = require('fs-extra');
 var qt = require('quickthumb');
 
-var server = "http://peaceful-cove-69430.herokuapp.com/";
+// var server = "http://peaceful-cove-69430.herokuapp.com/";
+var server = "http://localhost:3000/"
 
 var app = express();
 
@@ -51,7 +52,11 @@ app.post('/register', function(request, response) {
 			"username":username,
 			"password":password,
 			"name":name,
-			"game":[]
+			"game": {
+					"gameID":null,
+					"target":null,
+					"gameStatus":null,
+					}
 		}
 
 		var imgPath = request.files[0]["path"];
@@ -144,10 +149,14 @@ function renderHome(username) {
 	})
 
 	games += "</ul>"
-	indexPage += games + "</body></html>"
+
+	var content = "<hr><h1>Join a Game</h1>";
+
+	// TODO: delete game once winner has been found from db!!!!
+
+	indexPage += games + content + "</body></html>"
 	return indexPage;
 }
-
 
 // TODO: make method for adding photos to train
 
