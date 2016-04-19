@@ -105,9 +105,8 @@ app.post('/register', function(request, response) {
 														db.collection('players').insert(toInsert, function(err, player){
 															if (err) return response.send("failure on insert");		
 														});
-														
-														// TODO: redirect to homepage!!!!
-														// response.set('Content-Type', 'text/html');
+	
+														response.set('Content-Type', 'text/html');
 														response.send(renderHome(username));
 													});
 						});
@@ -125,8 +124,7 @@ app.post('/login', function(request, response) {
 		if (err) return response.send("Error logging in");
 		// assumes only one doc with given username
 		if (arr[0].password == password) {
-			// TODO: redirect to homepage!!!!
-			// response.set('Content-Type', 'text/html');
+			response.set('Content-Type', 'text/html');
 			response.send(renderHome(username));
 		} else {
 			console.log("Wrong password. " + username + " tried logging in with " + password);
