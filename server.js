@@ -72,10 +72,15 @@ app.post('/register', function(request, response) {
 
 	var username = request.body.username;
 	var password = request.body.password;
+	var password2 = request.body.password2;
 	var name = request.body.name;
 
-	if(!username || !password || !name) {
+	if(!username || !password || !name || !password2) {
 		return response.send("You're missing some data");
+	}
+
+	if(password != password2) {
+		return response.send("Passwords don't match");
 	}
 
 	// TODO: make it so user cannot leave out photo to upload
@@ -169,6 +174,7 @@ app.post('/login', function(request, response) {
 
 	db.collection('players').find({"username":username}).toArray(function(err, arr) {
 		if (err) return response.send("Error logging in");
+		if (arr.length === 0) return response.send("Username not found");
 		// assumes only one doc with given username
 		if (arr[0].password == password) {
 			response.set('Content-Type', 'text/html');
@@ -180,6 +186,7 @@ app.post('/login', function(request, response) {
 	});
 });
 
+// Homepage after login
 app.get('/home', function(request, response) {
 	var username = request.session.username;
 	var indexPage = "<!DOCTYPE html><html><head><title>" + username + "'s Home</title></head><body>";
@@ -198,17 +205,67 @@ app.get('/home', function(request, response) {
 				  '<p>Enter Game ID: <input type="text" name="gameID"></p>' + 
 				  '<input type="submit" value="Enter">';
 
-
-	// TODO: delete game once winner has been found from db!!!!
-
 	indexPage += games + content + "</body></html>"
 	response.send(indexPage);
 	
 });
 
 app.post('/joinGame', function(request, response) {
-	response.send('hi')
+	gameID = request.body.gameID;
+	username = request.session.username;
+
+	// check if gameID is in use
+	db.collection('players').find( {game: { $elemMatch: { gameID:gameID, gameStatus:{$ne:"waiting"} }} } ).toArray(function(err, arr) {
+		console.log(arr);
+		for (var i in arr) {
+			if (arr[i].username == username) {
+				return response.send('Already in game!');
+			}
+		}
+
+		// TODO: elemMatch and above loop dont properly function
+		// goal is to check is Gameid is in use/player is already in game
+		// but doesnt work
+
+		if (arr.length > 0) { // gameID already used
+			return response.send('Game ID already used');
+		}
+
+
+		game = {
+			"gameID":gameID,
+			"target":null,
+			"gameStatus":"waiting"
+		};
+
+		db.collection('players').find({username:username}).toArray(function(err, toJoin) {
+			if (err) return response.send("Oops! Something went wrong!");
+
+			toJoin[0].game.push(game);
+
+			db.collection('players').update(
+				{username: username},
+				{
+					$set: {
+						"game":toJoin[0].game
+					}
+				}
+
+			)
+
+		});
+
+		response.send(renderLobby(gameID));
+	});
 });
+
+function renderLobby(gameID) {
+	var indexPage = "<!DOCTYPE html><html><head><title>" + gameID + " Lobby</title></head><body>"
+
+	indexPage += "hello</body></html>"
+
+	return indexPage
+}
 
 
 // TODO: make method for adding photos to train
