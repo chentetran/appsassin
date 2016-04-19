@@ -23,90 +23,140 @@ app.use(bodyParser.urlencoded({ extended: true })); // Required if we need to us
 app.use(express.static(__dirname + '/public')); //serve static content
 app.use(express.static(__dirname + '/images'));
 
-var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://heroku_9j5jdjrb:b03itk1jq0sfjs4frffj73f57o@ds011311.mlab.com:11311/heroku_9j5jdjrb';
+var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://localhost/appdb';
 var MongoClient = require('mongodb').MongoClient, format = require('util').format;
 var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
   db = databaseConnection;
 });
 
-// upload photo with multer
-// should delete stored file after processing to block attacks
-// see http://stackoverflow.com/questions/23691194/node-express-file-upload
-// faces/detect method for skybiometry
-// for calibrating one's own picture
-// TODO: merge with /sendName
-app.post('/uploadPhoto', function(request, response){ 
-	var imgPath = request.files[0]["path"];
-	var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
-	
-	// for local server:
-	// var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=http://www.tvchoicemagazine.co.uk/sites/default/files/imagecache/interview_image/intex/michael_emerson.png";
-	console.log(link);
-	unirest.get(link,
-				function(faceDetectResponse) {
-					if (faceDetectResponse.error) {
-						return response.status(500).send({message: faceDetectResponse.error});
-					}
+// Register for an account
+app.post('/register', function(request, response) {
+	var username = request.body.username;
+	var password = request.body.password;
+	var name = request.body.name;
 
-					var body = faceDetectResponse.body;
-					var tags = "";
+	if(!username || !password || !name) {
+		return response.send("You're missing some data");
+	}
 
-					// user should send photo with only one face
-					// so that face training isn't complicated
-					for (var i in body.photos) {
-						if (body.photos[i].tags) { 
-							if (body.photos[i].tags.length > 1) {
-								response.send(400, {message: "Send photo with only one face for calibration"});
+	// TODO: make it so user cannot leave out photo to upload
+
+	db.collection('players').find({username:username}).toArray(function(err, arr) {
+		if (err) return response.send("Error in finding players in db");
+		if (arr.length > 0) { 	// someone already has username
+			return response.send("Username taken");
+		}
+		
+		var toInsert = {
+			"username":username,
+			"password":password,
+			"name":name,
+			"game":[]
+		}
+
+		var imgPath = request.files[0]["path"];
+		// var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
+		// for local server:
+		var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=http://www.tvchoicemagazine.co.uk/sites/default/files/imagecache/interview_image/intex/michael_emerson.png";
+		
+		unirest.get(link,
+					function(faceDetectResponse) {
+						if (faceDetectResponse.error) {
+							console.log('faceDetectResponse error');
+							return response.status(500).send({message: "Error in face detection"});
+						}
+
+						var body = faceDetectResponse.body;
+						var tags = "";
+
+						// user should send one photo with only one face for calibration
+						if (body.photos[0].tags) { 
+							if (body.photos[0].tags.length > 1) {
+								return response.status(400).send({message: "Send photo with only one face for calibration"});
 							}
-							else if (body.photos[i].tags.length === 1) {
-								tags += body.photos[i].tags[0].tid + ',';
+							else if (body.photos[0].tags.length === 1) {
+								tags += body.photos[0].tags[0].tid + ',';
 							}
 						}
-					}
+						
 
-					// if no faces, error
-					if (tags.length === 0) {
-						response.send(400, {message: "no faces detected"});
-					}
+						// if no faces, error
+						if (tags.length === 0) {
+							return response.status(400).send({message: "no faces detected"});
+						}
 
-					console.log('tag ids are: ' + tags);
-					console.log('name is ' + request.body.userid);
-					var uid = request.body.userid;
+						// save tags
+						unirest.get(service_root + "tags/save?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uid=" + username + "@snapspace" + "&tids=" + tags,
+									function(tagSaveResponse){
+										if (tagSaveResponse.error) {
+											return response.status(500).send(tagSaveResponse.error);										
+										}
 
-					// TODO: check db if uid already used. if so, add number to end of uid
-					// db.collection('players').find({"uid":uid}).toArray(function(err, arr){
-					// 	if (arr.length != 0) { // someone already has that uid
-					// 		uid += arr.length; // append number to end of uid
-					// 	}
-					// });
+										// start face training
+										unirest.get(service_root + "faces/train?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + request.body.userid + "@snapspace",
+													function(faceTrainResponse) {
+														if (faceTrainResponse.error) {
+															return response.status(500).send(faceTrainResponse.error);
+														}
 
-					// save tags
-					unirest.get(service_root + "tags/save?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uid=" + uid + "@snapspace" + "&tids=" + tags,
-								function(tagSaveResponse){
-									if (tagSaveResponse.error) {
-										return response.send(500, tagSaveResponse.error);										
-									}
+														console.log('successfully trained a face');
 
-									// start face training
-									unirest.get(service_root + "faces/train?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + request.body.userid + "@snapspace",
-												function(faceTrainResponse) {
-													if (faceTrainResponse.error) {
-														return response.send(500, faceTrainResponse.error);
-													}
+														// insert player to db
+														db.collection('players').insert(toInsert, function(err, player){
+															if (err) return response.send("failure on insert");		
+														});
+														
+														// TODO: redirect to homepage!!!!
+														// response.set('Content-Type', 'text/html');
+														response.send(renderHome(username));
+													});
+						});
+		});
+	});
 
-													console.log('successfully trained a face');
-												});
-									
-								});
-
-
-					response.send('training...');
-					// response.send(body);
-					// response.redirect('back');
-				});
 });
 
-// to recognize a face
+// Login to account
+app.post('/login', function(request, response) {
+	var username = request.body.username;
+	var password = request.body.password;
+
+	db.collection('players').find({"username":username}).toArray(function(err, arr) {
+		if (err) return response.send("Error logging in");
+		// assumes only one doc with given username
+		if (arr[0].password == password) {
+			// TODO: redirect to homepage!!!!
+			// response.set('Content-Type', 'text/html');
+			response.send(renderHome(username));
+		} else {
+			console.log("Wrong password. " + username + " tried logging in with " + password);
+			response.send("Wrong password!");
+		}
+	});
+});
+
+function renderHome(username) {
+	var indexPage = "<!DOCTYPE html><html><head><title>" + username + "'s Home</title></head><body>";
+	var games = "<h1>My Games:</h1><ul>";
+
+	db.collection('players').find({username:username}).toArray(function(err, arr) {
+		for (var i in arr.game) {
+			games += "<li><a href=''>Game " + arr.game[i] + "</a></li>";
+		}
+	})
+
+	games += "</ul>"
+	indexPage += games + "</body></html>"
+	return indexPage;
+}
+
+
+// TODO: make method for adding photos to train
+
+// TODO: make method for resetting photos
+// use tags/remove + faces/train
+
+// To recognize a face
 // TODO: merge with assassinate button
 app.post('/assassinate', function(request, response){ 
 	unirest.get(service_root + "faces/recognize?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + "emerson" + "&urls=https://peaceful-cove-69430.herokuapp.com/images/d6a3d42826dea771f2e6c09f41a0df7b" + "&namespace=snapspace",
@@ -137,50 +187,6 @@ app.post('/assassinate', function(request, response){
 
 });
 
-app.get('/', function(request, response) {
-	response.sendFile(__dirname + 'public/index.html');
-});
-
-// receive login and gameID from client, returns json 
-// json includes list of other players' logins
-// if login not present in db, return empty json
-// TODO: attach uid from skybio to ones doc in mongodb
-app.post('/sendName', function(request, response) {
-	response.header("Access-Control-Allow-Origin", "*");
-  	response.header("Access-Control-Allow-Headers", "X-Requested-With");
-
-  	var login = request.body.login;
-  	var gameID = Number(request.body.gameID);
-
-  	var toInsert = {
-  		"login":login,
-  		"target":"",
-  		"gameID":gameID
-  	}
- 
-  	// check is login is present in db
-  	// if it is, return json
-
-  	if (login && gameID) {
-  		db.collection('players').insert(toInsert, function(err, player) {
-  			if(err) response.send('failure to insert');
-  			else {
-  				var player_logins = [];
-  				db.collection('players').find({"gameID":gameID}).toArray(function(err, players){
-
-  					for (var i = 0; i < players.length; i++) {
-  						player_logins.push(players[i].login);
-  					}
-  					response.send(player_logins);
-  				});
-  			}
-  		})
-  	}
-  	else {
-  		response.send({"error":"Something wrong with your data"})
-  	}
-
-});
 
 
 // takes login and gameID from client
@@ -351,5 +357,9 @@ function shuffle(a) {
         a[j] = x;
     }
 }
+
+app.get('/', function(request, response) {
+	response.sendFile(__dirname + 'public/login.html');
+});
 
 app.listen(process.env.PORT || 3000);
