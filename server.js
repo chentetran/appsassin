@@ -1,3 +1,7 @@
+// TODO: Fix login system
+// see http://code.runnable.com/U108R8ihwn4m4TM5/user-creation-signup-and-login-with-express-4-and-mongodb-for-node-js
+
+
 // Initialization
 var express = require('express');
 var multer = require('multer');
@@ -7,6 +11,7 @@ var formidable = require('formidable');
 var util = require('util');
 var fs = require('fs-extra');
 var qt = require('quickthumb');
+var expressSession = require('express-session')
 
 // var server = "http://peaceful-cove-69430.herokuapp.com/";
 var server = "http://localhost:3000/"
