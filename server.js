@@ -100,8 +100,7 @@ app.post('/register', function(request, response) {
 		var toInsert = {
 			"username":username,
 			"password":password,
-			"name":name,
-			"game": []
+			"name":name
 		}
 
 		var imgPath = request.files[0]["path"];
@@ -192,11 +191,13 @@ app.get('/home', function(request, response) {
 	var indexPage = "<!DOCTYPE html><html><head><title>" + username + "'s Home</title></head><body>";
 	var games = "<h1>My Games:</h1><ul>";
 
-	db.collection('players').find({username:username}).toArray(function(err, arr) {
-		for (var i in arr.game) {
-			games += "<li><a href=''>Game " + arr.game[i] + "</a></li>";
-		}
-	})
+	//TODO: find a way to list games
+
+	// db.collection('players').find({username:username}).toArray(function(err, arr) {
+	// 	for (var i in arr.game) {
+	// 		games += "<li><a href=''>Game " + arr.game[i] + "</a></li>";
+	// 	}
+	// })
 
 	games += "</ul>"
 
@@ -215,52 +216,87 @@ app.post('/joinGame', function(request, response) {
 	username = request.session.username;
 
 	// check if gameID is in use
-	db.collection('players').find( {game: { $elemMatch: { gameID:gameID, gameStatus:{$ne:"waiting"} }} } ).toArray(function(err, arr) {
-		if (err) return response.send("Error");
-
-
-		if (arr.length > 0) { // gameID already used
-			return response.send('Game ID already used');
+	db.collection('games').find({gameID:gameID}).toArray(function(err, games) {
+		if (err) return response.send('Error searching through db');
+		if (games.length > 0 && games[0].started == true) { // gameID already used
+			return response.send("Game ID already used. Please pick another.");
 		}
 
-		db.collection('players').find( {game: { $elemMatch: { gameID:gameID, gameStatus:"waiting" }} } ).toArray(function(err, arr) {
-			if (err) return response.send("Error");
+		if (games.length == 1 && games[0].started == false) { // join lobby
+			db.collection('games').update({gameID:gameID}, {$addToSet: {players: username}}, function(err, result) {
+									   		if (err) return response.send('Failure to join game lobby');
+									   		response.send(renderLobby(gameID));
+								   		 });
+		}
 
-			// check if player is already in lobby
-			for (var i in arr) {
-				if (arr[i].username == username) {
-					return response.send('Already in game!');
-				}
+		else { // create the game
+			var date = new Date();
+			var toInsert = {
+				gameID:gameID,
+				players:[username],
+				targets:[],
+				status:[],
+				started:false,
+				date:date
 			}
 
-			game = {
-				"gameID":gameID,
-				"target":null,
-				"gameStatus":"waiting"
-			};
+			db.collection('games').insert(toInsert, function(err, game) {
+				if (err) return response.send('Failed to create game');
 
-			db.collection('players').find({username:username}).toArray(function(err, toJoin) {
-				if (err) return response.send("Oops! Something went wrong!");
+				console.log("Game " + gameID + " created");
 
-				toJoin[0].game.push(game);
-
-				db.collection('players').update(
-					{username: username},
-					{
-						$set: {
-							"game":toJoin[0].game
-						}
-					}
-
-				)
-
+				response.send(renderLobby(gameID));
 			});
-
-			response.send(renderLobby(gameID));
-		});
-
-
+		}
 	});
+
+	// // check if gameID is in use
+	// db.collection('players').find( {game: { $elemMatch: { gameID:gameID, gameStatus:{$ne:"waiting"} }} } ).toArray(function(err, arr) {
+	// 	if (err) return response.send("Error");
+
+
+	// 	if (arr.length > 0) { // gameID already used
+	// 		return response.send('Game ID already used');
+	// 	}
+
+	// 	db.collection('players').find( {game: { $elemMatch: { gameID:gameID, gameStatus:"waiting" }} } ).toArray(function(err, arr) {
+	// 		if (err) return response.send("Error");
+
+	// 		// check if player is already in lobby
+	// 		for (var i in arr) {
+	// 			if (arr[i].username == username) {
+	// 				return response.send('Already in game!');
+	// 			}
+	// 		}
+
+	// 		game = {
+	// 			"gameID":gameID,
+	// 			"target":null,
+	// 			"gameStatus":"waiting"
+	// 		};
+
+	// 		db.collection('players').find({username:username}).toArray(function(err, toJoin) {
+	// 			if (err) return response.send("Oops! Something went wrong!");
+
+	// 			toJoin[0].game.push(game);
+
+	// 			db.collection('players').update(
+	// 				{username: username},
+	// 				{
+	// 					$set: {
+	// 						"game":toJoin[0].game
+	// 					}
+	// 				}
+
+	// 			)
+
+	// 		});
+
+	// 		response.send(renderLobby(gameID));
+	// 	});
+
+
+	// });
 });
 
 function renderLobby(gameID) {
