@@ -90,17 +90,12 @@ app.post('/register', function(request, response) {
 		if (arr.length > 0) { 	// someone already has username
 			return response.send("Username taken");
 		}
-			
-		// var gameObj = {
-		// 				"gameID":null,
-		// 				"target":null,
-		// 				"gameStatus":null,
-		// 			  }
 
 		var toInsert = {
 			"username":username,
 			"password":password,
-			"name":name
+			"name":name,
+			"games":[]
 		}
 
 		var imgPath = request.files[0]["path"];
@@ -191,7 +186,23 @@ app.get('/home', function(request, response) {
 	var indexPage = "<!DOCTYPE html><html><head><title>" + username + "'s Home</title></head><body>";
 	var games = "<h1>My Games:</h1><ul>";
 
-	//TODO: find a way to list games
+	// Listing games
+	db.collection('players').find({username:username}).toArray(function(err, arr) {
+		if (err) return response.send("Error listing games");
+		
+		for (var i in arr[0].games) {
+			games += "<li><a href=''>Game " + arr[0].games[i] + "</a></li>";
+		}
+		games += "</ul>";
+
+		var content = "<hr><h1>Join a Game</h1>" +
+					  '<form method="post" enctype="multipart/form-data" action="' + server + 'joinGame">' +
+					  '<p>Enter Game ID: <input type="text" name="gameID"></p>' + 
+					  '<input type="submit" value="Enter">';
+
+		indexPage += games + content + "</body></html>"
+		response.send(indexPage);
+	});
 
 	// db.collection('players').find({username:username}).toArray(function(err, arr) {
 	// 	for (var i in arr.game) {
@@ -199,15 +210,6 @@ app.get('/home', function(request, response) {
 	// 	}
 	// })
 
-	games += "</ul>"
-
-	var content = "<hr><h1>Join a Game</h1>" +
-				  '<form method="post" enctype="multipart/form-data" action="' + server + 'joinGame">' +
-				  '<p>Enter Game ID: <input type="text" name="gameID"></p>' + 
-				  '<input type="submit" value="Enter">';
-
-	indexPage += games + content + "</body></html>"
-	response.send(indexPage);
 	
 });
 
@@ -224,8 +226,10 @@ app.post('/joinGame', function(request, response) {
 
 		if (games.length == 1 && games[0].started == false) { // join lobby
 			db.collection('games').update({gameID:gameID}, {$addToSet: {players: username}}, function(err, result) {
-									   		if (err) return response.send('Failure to join game lobby');
-									   		response.send(renderLobby(gameID));
+									   		if (err) response.send('Failure to join game lobby');
+									   		addGameID(username, gameID);
+									   		request.session.gameID = gameID;
+											response.redirect('renderLobby');
 								   		 });
 		}
 
@@ -245,79 +249,85 @@ app.post('/joinGame', function(request, response) {
 
 				console.log("Game " + gameID + " created");
 
-				response.send(renderLobby(gameID));
+				addGameID(username, gameID);
+				request.session.gameID = gameID;
+				response.redirect('renderLobby');
 			});
 		}
+
+
 	});
-
-	// // check if gameID is in use
-	// db.collection('players').find( {game: { $elemMatch: { gameID:gameID, gameStatus:{$ne:"waiting"} }} } ).toArray(function(err, arr) {
-	// 	if (err) return response.send("Error");
-
-
-	// 	if (arr.length > 0) { // gameID already used
-	// 		return response.send('Game ID already used');
-	// 	}
-
-	// 	db.collection('players').find( {game: { $elemMatch: { gameID:gameID, gameStatus:"waiting" }} } ).toArray(function(err, arr) {
-	// 		if (err) return response.send("Error");
-
-	// 		// check if player is already in lobby
-	// 		for (var i in arr) {
-	// 			if (arr[i].username == username) {
-	// 				return response.send('Already in game!');
-	// 			}
-	// 		}
-
-	// 		game = {
-	// 			"gameID":gameID,
-	// 			"target":null,
-	// 			"gameStatus":"waiting"
-	// 		};
-
-	// 		db.collection('players').find({username:username}).toArray(function(err, toJoin) {
-	// 			if (err) return response.send("Oops! Something went wrong!");
-
-	// 			toJoin[0].game.push(game);
-
-	// 			db.collection('players').update(
-	// 				{username: username},
-	// 				{
-	// 					$set: {
-	// 						"game":toJoin[0].game
-	// 					}
-	// 				}
-
-	// 			)
-
-	// 		});
-
-	// 		response.send(renderLobby(gameID));
-	// 	});
-
-
-	// });
 });
 
-function renderLobby(gameID) {
-	var indexPage = "<!DOCTYPE html><html><head><title>" + gameID + " Lobby</title></head><body>"
+// add gameID to player's list of games
+function addGameID(username, gameID) {
+	db.collection('players').update({username:username}, {$addToSet: {games:gameID}}, function(err, result) {
+		if (err) response.send("Error adding gameID to player's array of games");
 
-	indexPage += "hello</body></html>"
-
-	return indexPage
+	});
 }
 
+// TODO: find a module for real time updating of players in lobby - Maybe socket.io? -> would help for chat functionality too
+app.get('/renderLobby', function(request, response) {
+	gameID = request.session.gameID;
+
+	var indexPage = "<!DOCTYPE html><html><head><title>" + gameID + " Lobby</title></head><body>"
+
+	indexPage += "<h1>Players in lobby:</h1><ul>";
+
+	db.collection('games').find({gameID:gameID}).toArray(function(err, playersInGame){
+		if (err) return response.send('failed to load');
+		for (var i in playersInGame[0].players) {
+			indexPage += "<li>" + playersInGame[0].players[i] + "</li>";
+		}
+		indexPage += "</ul></body></html>"
+		response.send(indexPage);
+	});
+});
 
 // TODO: make method for adding photos to train
 
 // TODO: make method for resetting photos
 // use tags/remove + faces/train
 
+// assign targets to players
+app.post('/assignTargets', function(request, response) {
+	response.header("Access-Control-Allow-Origin", "*");
+  	response.header("Access-Control-Allow-Headers", "X-Requested-With");
+
+
+
+  	db.collection('games').find({gameID:gameID})
+});
+
+
+
 /****************************************************************************************************************************/
 /****************************************************************************************************************************/
 /*************************************** ALL OF THE FOLLOW CODE WILL BE CHANGED *********************************************/
 /****************************************************************************************************************************/
 /****************************************************************************************************************************/
+
+// takes gameID from client
+// assigns targets to all players in db with given gameID
+app.post('/assignTargets_blah', function(request, response) {
+	response.header("Access-Control-Allow-Origin", "*");
+  	response.header("Access-Control-Allow-Headers", "X-Requested-With");
+
+	var gameID = Number(request.body.gameID);
+	var cursor = db.collection('players');
+	cursor.find({gameID:gameID}).toArray(function(err, players_arr) {
+		if (err) {
+			response.send('failure in finding "players"');
+		}
+		else {
+
+			assign(players_arr, gameID);
+
+			response.send();
+		}
+	});
+});
 
 
 // To recognize a face
@@ -468,26 +478,6 @@ function assign(players_arr, gameID) {
 	return;
 }
 
-// takes gameID from client
-// assigns targets to all players in db with given gameID
-app.post('/assignTargets', function(request, response) {
-	response.header("Access-Control-Allow-Origin", "*");
-  	response.header("Access-Control-Allow-Headers", "X-Requested-With");
-
-	var gameID = Number(request.body.gameID);
-	var cursor = db.collection('players');
-	cursor.find({gameID:gameID}).toArray(function(err, players_arr) {
-		if (err) {
-			response.send('failure in finding "players"');
-		}
-		else {
-
-			assign(players_arr, gameID);
-
-			response.send();
-		}
-	});
-});
 
 // takes login and gameID from client
 // returns target as string
