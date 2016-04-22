@@ -226,7 +226,7 @@ app.post('/joinGame', function(request, response) {
 		}
 
 		if (games.length == 1 && games[0].started == false) { // join lobby
-			db.collection('games').update({gameID:gameID}, {$addToSet: {players: username}, $push: {status:"Alive"}}, function(err, result) {
+			db.collection('games').update({gameID:gameID}, {$addToSet: {players: username}}, function(err, result) {
 									   		if (err) response.send('Failure to join game lobby');
 									   		addGameID(username, gameID);
 									   		request.session.gameID = gameID;
@@ -240,7 +240,7 @@ app.post('/joinGame', function(request, response) {
 				gameID:gameID,
 				players:[username],
 				targets:[],
-				status:["Alive"],
+				dead:[],
 				started:false,
 				date:date
 			}
@@ -274,7 +274,7 @@ app.get('/renderLobby', function(request, response) {
 	username = request.session.username;
 
 	// a non-player is trying to view the game
-	if(!username) return request.send('You cannot see this game lobby');
+	if(!username) return response.send('You cannot see this game lobby');
 
 	var indexPage = "<!DOCTYPE html><html><head><title>" + gameID + " Lobby</title></head><body>"
 
@@ -283,11 +283,15 @@ app.get('/renderLobby', function(request, response) {
 
 	db.collection('games').find({gameID:gameID}).toArray(function(err, playersInGame){
 		if (err) return response.send('failed to load');
-		console.log(gameID);
+	
 		for (var i in playersInGame[0].players) {
 			indexPage += "<li>" + playersInGame[0].players[i] + "</li>";
 		}
-		indexPage += "</ul>";
+		indexPage += "</ul><hr><h1>Assassinated:</h1><ol>";
+		for (var i in playersInGame[0].dead) {
+			indexPage += "<li>" + playersInGame[0].dead[i] + "</li>";
+		}
+		indexPage += "</ol><hr>";
 
 		// check if game has started
 	  	if (playersInGame[0].started == true) {
@@ -400,38 +404,34 @@ app.post('/assassinate', function(request, response) {
 			}
 		}
 
-		// set assassinated target's status to dead
-		arr[0].status[i] = "Dead";
+		// delete target and target's target from arrays	
+		playersInGame.splice(indexToRemove, 1);
+		arr[0].targets.splice(indexToRemove, 1);
 
 		// if self assigned as target, player has won
 		if (username == newTarget) {
-			// // delete game from games collection
-			// db.collection('games').deleteOne({gameID:gameID}, function(err, res) {
-			// 	if (err) return response.send('Failed to delete game');
-			// });
+			playersInGame = [username];
 
-			db.collection('games').update({gameID:gameID}, {$set: {started:username}}, function(err, result) {
+			db.collection('games').update({gameID:gameID}, {$set: {started:username,players:playersInGame}, $addToSet: {dead:target}}, function(err, result) {
 				if (err) return response.send('failure in ending game');
 
 				return response.redirect('renderLobby?gameID=' + gameID);
 			});
 		}
-
-
-		// delete game from player's list of games
-
-		// set new target
-		for (var i in playersInGame) {
-			if (username == playersInGame[i]) {
-				arr[0].targets[i] = newTarget;
+		else {
+			// set new target
+			for (var i in playersInGame) {
+				if (username == playersInGame[i]) {
+					arr[0].targets[i] = newTarget;
+				}
 			}
+
+			db.collection('games').update({gameID:gameID}, {$set: {players:playersInGame, targets:arr[0].targets}, $addToSet: {dead:target}}, function(err, result) {
+				if (err) return response.send('fail2');
+
+				else return response.redirect("renderLobby?gameID=" + gameID);
+			});
 		}
-
-		db.collection('games').update({gameID:gameID}, {$set: {players:playersInGame, targets:arr[0].targets, status:arr[0].status}}, function(err, result) {
-			if (err) return response.send('fail2');
-
-			else return response.redirect("renderLobby?gameID=" + gameID);
-		});
  	});
 
 });
