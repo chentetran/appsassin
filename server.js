@@ -340,9 +340,13 @@ app.get('/inGame', function(request, response) {
 				break;
 			}
 		}
+
+		var target = arr[0].targets[i];
+		request.session.target = target;
+
 		indexPage += "<h1>Game " + gameID + "</h1>" +
-					 "<h3>Your target is " + arr[0].targets[i] + "</h3>" +
-					 '<form method="post" enctype="multipart/form-data" action="' + server + 'assassinateTarget">' +
+					 "<h3>Your target is " + target + "</h3>" +
+					 '<form method="post" enctype="multipart/form-data" action="' + server + 'assassinate">' +
 					 '<input type="file" name="photo">' + 
 					 '<input type="submit" value="Assassinate"> Upload a photo of your target and click assassinate</form>' +
 					 "<hr><h2>Players in Game: </h2><ul>";
@@ -366,47 +370,52 @@ function sattoloCycle(items) {
   }
 }
 
+app.post('/assassinate', function(request, response) {
+	var username = request.session.username;
+	var gameID = request.session.gameID;
+	var target = request.session.target;
+	var newTarget;
+	var indexToRemove;
 
+	// TODO: use face recognition to verify success !!!!!!!!!
+
+	// assign next target
+	db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
+		if (err) return response.send('fail');
+		var playersInGame = arr[0].players;
+
+		// find new target
+		for (var i in playersInGame) {
+			if (target == playersInGame[i]) {
+				newTarget = arr[0].targets[i];
+				indexToRemove = i;
+			}
+		}
+		// delete target and target's target from arrays	
+		playersInGame.splice(indexToRemove, 1);
+		arr[0].targets.splice(indexToRemove, 1);
+
+		// set new target
+		for (var i in playersInGame) {
+			if (username == playersInGame[i]) {
+				arr[0].targets[i] = newTarget;
+			}
+		}
+
+		db.collection('games').update({gameID:gameID}, {$set {players:playersInGame, targets:arr[0].targets}}, function(err, result) {
+			if (err) return response.send('fail2');
+
+			response.send(newTarget);
+		});
+ 	});
+
+});
 
 /****************************************************************************************************************************/
 /****************************************************************************************************************************/
 /*************************************** ALL OF THE FOLLOW CODE WILL BE CHANGED *********************************************/
 /****************************************************************************************************************************/
 /****************************************************************************************************************************/
-
-// To recognize a face
-// TODO: merge with assassinate button
-app.post('/assassinate', function(request, response){ 
-	unirest.get(service_root + "faces/recognize?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + "emerson" + "&urls=https://peaceful-cove-69430.herokuapp.com/images/d6a3d42826dea771f2e6c09f41a0df7b" + "&namespace=snapspace",
-				function(faceRecogResponse) {
-
-					if(faceRecogResponse.error) {
-						return response.status(500).send(faceRecogResponse.error);
-					}
-					// API can give success response, but not have detected any face
-					else if (!faceRecogResponse.body.photos[0].tags || !faceRecogResponse.body.photos[0].tags[0]) {
-						return response.status(400).send({message: "Sorry no faces detected"});
-					}
-
-					var uid = [];
-
-
-					for (var i in faceRecogResponse.body.photos[0].tags) {	
-						if (faceRecogResponse.body.photos[0].tags[i].uids) { // api has a guess who it is
-							for (var j in faceRecogResponse.body.photos[0].tags[i].uids) {
-								uid.unshift(faceRecogResponse.body.photos[0].tags[i].uids[j].uid);
-							}
-						}
-					}
-
-					console.log(faceRecogResponse.body)
-					response.send(faceRecogResponse.body);
-				});
-
-});
-
-
-
 // takes login and gameID from client
 // eliminates client's target from db 
 // and assigns new target to user
@@ -461,66 +470,39 @@ app.post('/nextTarget', function(request, response) {
   	});
 });
 
+// To recognize a face
+// TODO: merge with assassinate button
+app.post('/assassinate', function(request, response){ 
+	unirest.get(service_root + "faces/recognize?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + "emerson" + "&urls=https://peaceful-cove-69430.herokuapp.com/images/d6a3d42826dea771f2e6c09f41a0df7b" + "&namespace=snapspace",
+				function(faceRecogResponse) {
 
-function assign(players_arr, gameID) {
-	console.log(players_arr);
-	var cursor = db.collection('players');
+					if(faceRecogResponse.error) {
+						return response.status(500).send(faceRecogResponse.error);
+					}
+					// API can give success response, but not have detected any face
+					else if (!faceRecogResponse.body.photos[0].tags || !faceRecogResponse.body.photos[0].tags[0]) {
+						return response.status(400).send({message: "Sorry no faces detected"});
+					}
 
-	shuffle(players_arr);
+					var uid = [];
 
-	var newTarget;
 
-	cursor.find({gameID:gameID}).forEach(function(doc) {
-		if (doc.login != players_arr[players_arr.length - 1].login) {
-			newTarget = players_arr.pop().login;
-			
-			db.collection('players').update(
-					{"_id":doc._id},
-					{
-						$set: {
-							"target":newTarget
+					for (var i in faceRecogResponse.body.photos[0].tags) {	
+						if (faceRecogResponse.body.photos[0].tags[i].uids) { // api has a guess who it is
+							for (var j in faceRecogResponse.body.photos[0].tags[i].uids) {
+								uid.unshift(faceRecogResponse.body.photos[0].tags[i].uids[j].uid);
+							}
 						}
 					}
-			)	
-			
-		} 
-		else if (doc.login != players_arr[0].login) {
-			newTarget = players_arr.shift().login;
-			
-			db.collection('players').update(
-				{"_id":doc._id},
-				{
-					$set: {
-						"target":newTarget
-					}
-				}
-			)
-			
-		}
-		else {
-			// if player doesnt have a target, assign it to target "failnonefail02857"
-			// this will fail badly if a user has login "failnonefail02857"
-			db.collection('players').update(
-				{"_id":doc._id},
-				{
-					$set: {
-						"target":"failnonefail02857"
-					}
-				}
-			)
-		}
-	});
 
-	// account for player not getting a target
-	cursor.find({"gameID":gameID, "target":"failnonefail02857"}).toArray(function(err, arr){
-		if (arr.length > 0) { // there exists players with no target
-			console.log("arr.length == " + arr.length);
-			assign(players_arr, gameID);
-		}
-	});
+					console.log(faceRecogResponse.body)
+					response.send(faceRecogResponse.body);
+				});
 
-	return;
-}
+});
+
+
+
 
 app.get('/', function(request, response) {
 	response.set('Content-Type', 'text/html');
