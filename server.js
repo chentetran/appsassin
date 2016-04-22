@@ -251,7 +251,8 @@ app.post('/joinGame', function(request, response) {
 				console.log("Game " + gameID + " created");
 
 				addGameID(username, gameID);
-				request.session.gameID = gameID;
+
+				request.session.username = username;
 				response.redirect('renderLobby?gameID=' + gameID);
 			});
 		}
@@ -270,30 +271,72 @@ function addGameID(username, gameID) {
 // TODO: find a module for real time updating of players in lobby - Maybe socket.io? -> would help for chat functionality too
 app.get('/renderLobby', function(request, response) {
 	gameID = request.query.gameID;
+	username = request.session.username;
+
+	// a non-player is trying to view the game
+	if(!username) return request.send('You cannot see this game lobby');
 
 	var indexPage = "<!DOCTYPE html><html><head><title>" + gameID + " Lobby</title></head><body>"
 
-
-
-	indexPage += "<h1>Players in lobby:</h1><ul>";
+	indexPage += "<h1>Game " + gameID + "</h1>";
+	indexPage += "<h1>Players in game:</h1><ul>";
 
 	db.collection('games').find({gameID:gameID}).toArray(function(err, playersInGame){
 		if (err) return response.send('failed to load');
-
-		request.session.gameID = gameID;
-
-		// check if game has started
-	  	if (playersInGame[0].started) return response.redirect('inGame');
-
+		console.log(gameID);
 		for (var i in playersInGame[0].players) {
 			indexPage += "<li>" + playersInGame[0].players[i] + "</li>";
 		}
+		indexPage += "</ul>";
 
-		indexPage += "</ul><hr><form method='post' enctype='multipart/form-data' action='" + server + "assignTargets'><input type='submit' value='Start Game'></form>" + "</body></html>"
-		response.send(indexPage);
+		// check if game has started
+	  	if (playersInGame[0].started == true) {
+	  		indexPage += "<h3>Game has started!</h3>";
+
+	  		db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
+				var playersInGame = arr[0].players;
+				var i;
+				for (i = 0; i < playersInGame.length; i++) {
+					if (playersInGame[i] == username) {
+						break;
+					}
+				}
+
+
+				var target = arr[0].targets[i];
+				request.session.target = target;
+				request.session.username = username;
+				request.session.gameID = gameID;
+				indexPage += "<h3>Your target is " + target + "</h3>" +
+							 '<form method="post" enctype="multipart/form-data" action="' + server + 'assassinate">' +
+							 '<input type="file" name="photo">' + 
+							 '<input type="submit" value="Assassinate"> Upload a photo of your target and click assassinate</form>';
+
+				indexPage += "</body></html>";
+				response.send(indexPage);
+			});
+
+	  	}
+		else if (playersInGame[0].started == false) { // game hasn't 
+			request.session.gameID = gameID;
+			indexPage += "<form method='post' enctype='multipart/form-data' action='" + server + "assignTargets'><input type='submit' value='Start Game'></form>" + "</body></html>"
+			indexPage += "</ul></body></html>";
+			response.send(indexPage);
+		}
+		else { // game has ended
+			indexPage += "<h2>The winner is " + playersInGame[0].started + "</h2>";
+			indexPage += "</ul></body></html>";
+			response.send(indexPage);
+		}
+
+		// TODO: option to leave lobby
+		// indexPage += "</ul><hr><form method='post' enctype='multipart/form-data' action ='" + server + ""leave lobby get mthod
+		// delete game from player's games list
+		// db.collection('players').update({username:username},{$pull:{games:gameID}}, function(err, result) {
+		// 	if (err) return response.send('Failure to delete game from game list of player');
+		// });
 	});
 });
-
 // TODO: make method for adding photos to train
 
 // TODO: make method for resetting photos
@@ -320,44 +363,10 @@ app.post('/assignTargets', function(request, response) {
   		db.collection('games').update({gameID:gameID}, {$set:{targets: targets,started:true}}, function(err, result) {
   			if (err) return response.send('Failed to assign targets');
   			db.collection('games').find({gameID:gameID}).toArray(function(error, res) {
-  			response.redirect('inGame');
+  				response.redirect('renderLobby?gameID=' + gameID);
   			});
   		});
   	});	
-});
-
-app.get('/inGame', function(request, response) {
-	var username = request.session.username;
-	var gameID = request.session.gameID;
-	var indexPage = "<!DOCTYPE html><html><head><title>Game " + gameID + " in Progress</title></head><body>";
-
-	db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
-		var playersInGame = arr[0].players;
-		var i;
-		for (i = 0; i < playersInGame.length; i++) {
-			if (playersInGame[i] == username) {
-				break;
-			}
-		}
-
-		var target = arr[0].targets[i];
-		request.session.target = target;
-
-		indexPage += "<h1>Game " + gameID + "</h1>" +
-					 "<h3>Your target is " + target + "</h3>" +
-					 '<form method="post" enctype="multipart/form-data" action="' + server + 'assassinate">' +
-					 '<input type="file" name="photo">' + 
-					 '<input type="submit" value="Assassinate"> Upload a photo of your target and click assassinate</form>' +
-					 "<hr><h2>Players in Game: </h2><ul>";
-
-		for (var i in playersInGame) {
-			indexPage += "<li>" + playersInGame[i] + "</li>";
-		}
-
-		indexPage += "</ul></body></html>";
-		response.send(indexPage);
-	});
-
 });
 
 function sattoloCycle(items) {
@@ -391,41 +400,37 @@ app.post('/assassinate', function(request, response) {
 			}
 		}
 
+		// set assassinated target's status to dead
+		arr[0].status[i] = "Dead";
+
 		// if self assigned as target, player has won
 		if (username == newTarget) {
-			// delete game from games collection
-			db.collection('games').deleteOne({gameID:gameID}, function(err, res) {
-				if (err) return response.send('Failed to delete game');
-			
-				return response.send("You won!");
-			});
+			// // delete game from games collection
+			// db.collection('games').deleteOne({gameID:gameID}, function(err, res) {
+			// 	if (err) return response.send('Failed to delete game');
+			// });
 
-			// delete game from player's games list
-			db.collection('players').update({username:username},{$pull:{games:gameID}}, function(err, result) {
-				if (err) return response.send('Failure to delete game from game list of player');
+			db.collection('games').update({gameID:gameID}, {$set: {started:username}}, function(err, result) {
+				if (err) return response.send('failure in ending game');
+
+				return response.redirect('renderLobby?gameID=' + gameID);
 			});
 		}
 
-		// delete game from player's games list
-		db.collection('players').update({username:target},{$pull:{games:gameID}}, function(err, result) {
-			if (err) return response.send('Failure to delete game from game list of player');
-	
-			// delete target and target's target from arrays	
-			playersInGame.splice(indexToRemove, 1);
-			arr[0].targets.splice(indexToRemove, 1);
 
-			// set new target
-			for (var i in playersInGame) {
-				if (username == playersInGame[i]) {
-					arr[0].targets[i] = newTarget;
-				}
+		// delete game from player's list of games
+
+		// set new target
+		for (var i in playersInGame) {
+			if (username == playersInGame[i]) {
+				arr[0].targets[i] = newTarget;
 			}
+		}
 
-			db.collection('games').update({gameID:gameID}, {$set: {players:playersInGame, targets:arr[0].targets}}, function(err, result) {
-				if (err) return response.send('fail2');
+		db.collection('games').update({gameID:gameID}, {$set: {players:playersInGame, targets:arr[0].targets, status:arr[0].status}}, function(err, result) {
+			if (err) return response.send('fail2');
 
-				else response.redirect("inGame");
-			});
+			else return response.redirect("renderLobby?gameID=" + gameID);
 		});
  	});
 
