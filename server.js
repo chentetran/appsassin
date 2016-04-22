@@ -1,5 +1,6 @@
 // Initialization
 var express = require('express');
+var FCClient = require('./FCClientJS.js')
 var multer = require('multer');
 var bodyParser = require('body-parser'); // Required if we need to use HTTP query or post parameters
 var unirest = require('unirest');
@@ -49,6 +50,7 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
   db = databaseConnection;
 });
 
+
 // This is a middleware that we will use on routes where
 // we _require_ that a user is logged in, such as the /secret url
 // function requireUser(req, res, next){
@@ -87,6 +89,10 @@ app.post('/register', function(request, response) {
 	res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
 	res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
 
+var FCClientInstance = new FCClient();
+FCClientInstance(sky_api_key, sky_api_secret).facesDetect("http://tribzap2it.files.wordpress.com/2012/06/michael-emerson-gi.jpg", null, null, function(data) {
+	console.log('works')
+});
 	request.session.username = request.body.username;
 
 	var username = request.body.username;
@@ -410,7 +416,7 @@ app.post('/assassinate', function(request, response) {
 	res.header('Access-Control-Allow-Origin', '*');
 	res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
 	res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
-	
+
 	var username = request.session.username;
 	var gameID = request.session.gameID;
 	var target = request.session.target;
