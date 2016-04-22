@@ -434,7 +434,7 @@ app.post('/assassinate', function(request, response) {
 		}
 		console.log(faceRecogResponse.body.photos[0].tags);
 		console.log(uid);
-
+		console.log(target)
 		// search through uid[] and see if target is in there
 		for (var i in uid) {
 			if (target + "@snapspace" == uid[i] && confidence[i] > threshold[i]) { // got em!
