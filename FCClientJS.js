@@ -253,7 +253,7 @@ var FCClient = function (apiKey, apiSecret)
 			var request = Math.round(Math.random() * 10000000);
 			var callbackName = "jsonp" + request;
 			var responceId = "fcClientJsResponse" + request;
-			window[callbackName] = function (data) {
+			global[callbackName] = function (data) {
 				document.getElementById(responceId).parentNode.removeChild(document.getElementById(responceId));
 				if (typeof callback == "function") {
 					callback(data);
