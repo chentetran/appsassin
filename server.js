@@ -9,8 +9,8 @@ var fs = require('fs-extra');
 var qt = require('quickthumb');
 var expressSession = require('express-session');
 
-// var server = "http://peaceful-cove-69430.herokuapp.com/";
-var server = "http://localhost:3000/"
+var server = "http://peaceful-cove-69430.herokuapp.com/";
+// var server = "http://localhost:3000/"
 
 var app = express();
 
@@ -30,7 +30,7 @@ app.use( expressSession({
   saveUninitialized: false
 }));
 
-var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://localhost/appdb';
+var mongoUri = process.env.MONGOLAB_URI || process.env.MONGOHQ_URL || 'mongodb://heroku_9j5jdjrb:b03itk1jq0sfjs4frffj73f57o@ds011311.mlab.com:11311/heroku_9j5jdjrb';
 var MongoClient = require('mongodb').MongoClient, format = require('util').format;
 var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
   db = databaseConnection;
@@ -38,33 +38,33 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
 
 // This is a middleware that we will use on routes where
 // we _require_ that a user is logged in, such as the /secret url
-function requireUser(req, res, next){
-  if (!req.user) {
-    res.redirect('/not_allowed');
-  } else {
-    next();
-  }
-}
+// function requireUser(req, res, next){
+//   if (!req.user) {
+//     res.redirect('/not_allowed');
+//   } else {
+//     next();
+//   }
+// }
 
 // This middleware checks if the user is logged in and sets
 // req.user and res.locals.user appropriately if so.
-function checkIfLoggedIn(req, res, next){
-  if (req.session.username) {
-    var coll = mongo.collection('players');
-    coll.findOne({username: req.session.username}, function(err, user){
-      if (user) {
-        // set a 'user' property on req
-        // so that the 'requireUser' middleware can check if the user is
-        // logged in
-        req.user = user;
-      }
+// function checkIfLoggedIn(req, res, next){
+//   if (req.session.username) {
+//     var coll = mongo.collection('players');
+//     coll.findOne({username: req.session.username}, function(err, user){
+//       if (user) {
+//         // set a 'user' property on req
+//         // so that the 'requireUser' middleware can check if the user is
+//         // logged in
+//         req.user = user;
+//       }
       
-      next();
-    });
-  } else {
-    next();
-  }
-}
+//       next();
+//     });
+//   } else {
+//     next();
+//   }
+// }
 
 // TODO: if new player registers for acc and uses same photo as someone else, other person's name will be overwritten in namespace. fix!
 
@@ -103,9 +103,9 @@ app.post('/register', function(request, response) {
 		}
 
 		var imgPath = request.files[0]["path"];
-		// var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
+		var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
 		// for local server:
-		var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=http://www.tvchoicemagazine.co.uk/sites/default/files/imagecache/interview_image/intex/michael_emerson.png";
+		// var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=http://www.tvchoicemagazine.co.uk/sites/default/files/imagecache/interview_image/intex/michael_emerson.png";
 		
 		unirest.get(link,
 					function(faceDetectResponse) {
@@ -406,7 +406,6 @@ app.post('/assassinate', function(request, response) {
 	var imgPath = request.files[0]["path"];
 	
 	var link = service_root + "faces/recognize.json?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + target + "@snapspace&urls=" + server + imgPath;
-		// above link wont work on local server!
 
 	unirest.get(link, function(faceRecogResponse) {
 		if (faceRecogResponse.error) {
