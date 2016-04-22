@@ -66,6 +66,8 @@ function checkIfLoggedIn(req, res, next){
   }
 }
 
+// TODO: if new player registers for acc and uses same photo as someone else, other person's name will be overwritten in namespace. fix!
+
 // Register for an account
 app.post('/register', function(request, response) {
 	request.session.username = request.body.username;
@@ -145,7 +147,7 @@ app.post('/register', function(request, response) {
 															return response.status(500).send(faceTrainResponse.error);
 														}
 
-														console.log('successfully trained a face');
+														console.log('successfully trained a face for ' + username);
 
 														// insert player to db
 														db.collection('players').insert(toInsert, function(err, player){
@@ -403,21 +405,21 @@ app.post('/assassinate', function(request, response) {
 
 	var imgPath = request.files[0]["path"];
 	
-	var link = service_root + "faces/recognize.json?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + target + "@snapspace&urls=http://www.tvchoicemagazine.co.uk/sites/default/files/imagecache/interview_image/intex/michael_emerson.png"; 
-	// + server + imgPath;
+	var link = service_root + "faces/recognize.json?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + target + "@snapspace&urls=" + server + imgPath;
 		// above link wont work on local server!
 
 	unirest.get(link, function(faceRecogResponse) {
 		if (faceRecogResponse.error) {
 			return response.send('Failure to recognize face');
 		}
+		
 		// api can give success response, but not have detected any face
-		else if (!faceRecogResponse.body.photos[0].tags.uids) {
+		if (faceRecogResponse.body.photos[0].tags.length === 0) {
 			request.session.killFailed = true;
 			console.log('no face detected. see image at ' + imgPath);
 			return response.redirect('renderLobby?gameID=' + gameID);
 		}
-		
+
 		var uid = [];
 		var threshold = [];
 		var confidence = [];
@@ -479,11 +481,12 @@ app.post('/assassinate', function(request, response) {
 					}
 			 	});
 			}
-			else {			// kill failed
-				request.session.killFailed = true;
-				return response.redirect('renderLobby?gameID=' + gameID);
-			}
 		}
+		// kill failed
+		console.log('kill failed');
+		request.session.killFailed = true;
+		return response.redirect('renderLobby?gameID=' + gameID);
+	
 	});
 
 
