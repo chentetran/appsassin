@@ -418,7 +418,7 @@ app.post('/assassinate', function(request, response) {
 			console.log('no face detected. see image at ' + imgPath);
 			return response.redirect('renderLobby?gameID=' + gameID);
 		}
-
+		console.log(faceRecogResponse);
 		var uid = [];
 		var threshold = [];
 		var confidence = [];
@@ -432,10 +432,13 @@ app.post('/assassinate', function(request, response) {
 				}
 			}
 		}
+		console.log(faceRecogResponse.body.photos[0].tags);
+		console.log(uid);
 
 		// search through uid[] and see if target is in there
 		for (var i in uid) {
 			if (target + "@snapspace" == uid[i] && confidence[i] > threshold[i]) { // got em!
+				console.log('in here')
 				// assign next target
 				db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
 					if (err) return response.send('fail');
