@@ -189,9 +189,10 @@ app.get('/home', function(request, response) {
 	// Listing games
 	db.collection('players').find({username:username}).toArray(function(err, arr) {
 		if (err) return response.send("Error listing games");
-		
+
 		for (var i in arr[0].games) {
-			games += "<li><a href=''>Game " + arr[0].games[i] + "</a></li>";
+			game = arr[0].games[i];
+			games += "<li><a href='" + server + "renderLobby?gameID=" + game + "'>Game " + game + "</a></li>";
 		}
 		games += "</ul>";
 
@@ -229,7 +230,7 @@ app.post('/joinGame', function(request, response) {
 									   		if (err) response.send('Failure to join game lobby');
 									   		addGameID(username, gameID);
 									   		request.session.gameID = gameID;
-											response.redirect('renderLobby');
+											response.redirect('renderLobby?gameID=' + gameID);
 								   		 });
 		}
 
@@ -251,10 +252,9 @@ app.post('/joinGame', function(request, response) {
 
 				addGameID(username, gameID);
 				request.session.gameID = gameID;
-				response.redirect('renderLobby');
+				response.redirect('renderLobby?gameID=' + gameID);
 			});
 		}
-
 
 	});
 });
@@ -269,18 +269,27 @@ function addGameID(username, gameID) {
 
 // TODO: find a module for real time updating of players in lobby - Maybe socket.io? -> would help for chat functionality too
 app.get('/renderLobby', function(request, response) {
-	gameID = request.session.gameID;
+	gameID = request.query.gameID;
 
 	var indexPage = "<!DOCTYPE html><html><head><title>" + gameID + " Lobby</title></head><body>"
+
+
 
 	indexPage += "<h1>Players in lobby:</h1><ul>";
 
 	db.collection('games').find({gameID:gameID}).toArray(function(err, playersInGame){
 		if (err) return response.send('failed to load');
+
+		request.session.gameID = gameID;
+
+		// check if game has started
+	  	if (playersInGame[0].started) return response.redirect('inGame');
+
 		for (var i in playersInGame[0].players) {
 			indexPage += "<li>" + playersInGame[0].players[i] + "</li>";
 		}
-		indexPage += "</ul></body></html>"
+
+		indexPage += "</ul><hr><form method='post' enctype='multipart/form-data' action='" + server + "assignTargets'><input type='submit' value='Start Game'></form>" + "</body></html>"
 		response.send(indexPage);
 	});
 });
@@ -295,10 +304,67 @@ app.post('/assignTargets', function(request, response) {
 	response.header("Access-Control-Allow-Origin", "*");
   	response.header("Access-Control-Allow-Headers", "X-Requested-With");
 
+  	gameID = request.session.gameID;
 
+  	db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
+  		if (err) return response.send('Failed searching game');
 
-  	db.collection('games').find({gameID:gameID})
+  		var players = arr[0].players;
+  		var targets = arr[0].players;
+  		var temp;
+  		var len = players.length;
+
+  		sattoloCycle(targets);
+  		console.log(targets)
+
+  		db.collection('games').update({gameID:gameID}, {$set:{targets: targets,started:true}}, function(err, result) {
+  			if (err) return response.send('Failed to assign targets');
+  			db.collection('games').find({gameID:gameID}).toArray(function(error, res) {
+  			response.redirect('inGame');
+  			});
+  		});
+
+  	});	
 });
+
+app.get('/inGame', function(request, response) {
+	var username = request.session.username;
+	var gameID = request.session.gameID;
+	var indexPage = "<!DOCTYPE html><html><head><title>Game " + gameID + " in Progress</title></head><body>";
+
+	db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
+		var playersInGame = arr[0].players;
+		var i;
+		for (i = 0; i < playersInGame.length; i++) {
+			if (playersInGame[i] == username) {
+				break;
+			}
+		}
+		indexPage += "<h1>Game " + gameID + "</h1>" +
+					 "<h3>Your target is " + arr[0].targets[i] + "</h3>" +
+					 '<form method="post" enctype="multipart/form-data" action="' + server + 'assassinateTarget">' +
+					 '<input type="file" name="photo">' + 
+					 '<input type="submit" value="Assassinate"> Upload a photo of your target and click assassinate</form>' +
+					 "<hr><h2>Players in Game: </h2><ul>";
+
+		for (var i in playersInGame) {
+			indexPage += "<li>" + playersInGame[i] + "</li>";
+		}
+
+		indexPage += "</ul></body></html>";
+		response.send(indexPage);
+	});
+
+});
+
+function sattoloCycle(items) {
+  for(var i = items.length; i-- > 1; ) {
+    var j = Math.floor(Math.random() * i);
+    var tmp = items[i];
+    items[i] = items[j];
+    items[j] = tmp;
+  }
+}
 
 
 
@@ -307,28 +373,6 @@ app.post('/assignTargets', function(request, response) {
 /*************************************** ALL OF THE FOLLOW CODE WILL BE CHANGED *********************************************/
 /****************************************************************************************************************************/
 /****************************************************************************************************************************/
-
-// takes gameID from client
-// assigns targets to all players in db with given gameID
-app.post('/assignTargets_blah', function(request, response) {
-	response.header("Access-Control-Allow-Origin", "*");
-  	response.header("Access-Control-Allow-Headers", "X-Requested-With");
-
-	var gameID = Number(request.body.gameID);
-	var cursor = db.collection('players');
-	cursor.find({gameID:gameID}).toArray(function(err, players_arr) {
-		if (err) {
-			response.send('failure in finding "players"');
-		}
-		else {
-
-			assign(players_arr, gameID);
-
-			response.send();
-		}
-	});
-});
-
 
 // To recognize a face
 // TODO: merge with assassinate button
@@ -437,7 +481,7 @@ function assign(players_arr, gameID) {
 							"target":newTarget
 						}
 					}
-			)
+			)	
 			
 		} 
 		else if (doc.login != players_arr[0].login) {
@@ -476,40 +520,6 @@ function assign(players_arr, gameID) {
 	});
 
 	return;
-}
-
-
-// takes login and gameID from client
-// returns target as string
-app.post('/getTarget', function(request, response) {
-	response.header("Access-Control-Allow-Origin", "*");
-  	response.header("Access-Control-Allow-Headers", "X-Requested-With");
-
-	var login = request.body.login;
-	var gameID = Number(request.body.gameID);
-
-	if(login && gameID) {
-		db.collection('players').find({"login":login, "gameID":gameID}).toArray(function(err, arr){
-			if(err) response.send("couldn't find target");
-			else {
-				// assuming only one document found
-				response.send(arr[0].target);
-			}
-		});
-	}
-	else {
-		response.send("Name or Game ID invalid");
-	}
-});
-
-function shuffle(a) {
-    var j, x, i;
-    for (i = a.length; i; i -= 1) {
-        j = Math.floor(Math.random() * i);
-        x = a[i - 1];
-        a[i - 1] = a[j];
-        a[j] = x;
-    }
 }
 
 app.get('/', function(request, response) {
