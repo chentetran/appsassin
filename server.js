@@ -8,6 +8,18 @@ var util = require('util');
 var fs = require('fs-extra');
 var qt = require('quickthumb');
 var expressSession = require('express-session');
+var allowCrossDomain = function(req, res, next) {
+    if ('OPTIONS' == req.method) {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+      res.send(200);
+    }
+    else {
+      next();
+    }
+};
+
 
 var server = "http://peaceful-cove-69430.herokuapp.com/";
 // var server = "http://localhost:3000/"
@@ -18,6 +30,7 @@ var sky_api_key = "94268d2c6049471283eb781d34391c16";
 var sky_api_secret = "2cf82e0f29c44dd0b4649a9d8f4469f6";
 var service_root = 'http://api.skybiometry.com/fc/';
 
+app.use(allowCrossDomain);
 app.use(bodyParser.json());
 app.use(qt.static(__dirname + '/'));
 app.use(multer({dest:'./images/'}).any());
@@ -359,9 +372,6 @@ app.get('/renderLobby', function(request, response) {
 
 // assign targets to players
 app.post('/assignTargets', function(request, response) {
-	response.header("Access-Control-Allow-Origin", "*");
-  	response.header("Access-Control-Allow-Headers", "X-Requested-With");
-
   	gameID = request.session.gameID;
 
   	db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
