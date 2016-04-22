@@ -83,7 +83,9 @@ app.post('/register', function(request, response) {
 		return response.send("Passwords don't match");
 	}
 
-	// TODO: make it so user cannot leave out photo to upload
+	if (request.files.length === 0) {
+		return response.send('You have to upload a photo');
+	}
 
 	db.collection('players').find({username:username}).toArray(function(err, arr) {
 		if (err) return response.send("Error in finding players in db");
@@ -276,9 +278,11 @@ app.get('/renderLobby', function(request, response) {
 	// a non-player is trying to view the game
 	if(!username) return response.send('You cannot see this game lobby');
 
+
 	var indexPage = "<!DOCTYPE html><html><head><title>" + gameID + " Lobby</title></head><body>"
 
 	indexPage += "<h1>Game " + gameID + "</h1>";
+
 	indexPage += "<h1>Players in game:</h1><ul>";
 
 	db.collection('games').find({gameID:gameID}).toArray(function(err, playersInGame){
@@ -295,7 +299,7 @@ app.get('/renderLobby', function(request, response) {
 
 		// check if game has started
 	  	if (playersInGame[0].started == true) {
-	  		indexPage += "<h3>Game has started!</h3>";
+	  		indexPage += "<h3>Game in progress</h3>";
 
 	  		db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
 				var playersInGame = arr[0].players;
@@ -306,7 +310,6 @@ app.get('/renderLobby', function(request, response) {
 					}
 				}
 
-
 				var target = arr[0].targets[i];
 				request.session.target = target;
 				request.session.username = username;
@@ -315,6 +318,12 @@ app.get('/renderLobby', function(request, response) {
 							 '<form method="post" enctype="multipart/form-data" action="' + server + 'assassinate">' +
 							 '<input type="file" name="photo">' + 
 							 '<input type="submit" value="Assassinate"> Upload a photo of your target and click assassinate</form>';
+
+				if (request.session.killFailed) {  		// sent here because assassination attempt failed
+					request.session.killFailed = false;
+					indexPage += "<h1 style='color:red'>Assassination failed</h1>"
+				}
+
 
 				indexPage += "</body></html>";
 				response.send(indexPage);
@@ -362,7 +371,6 @@ app.post('/assignTargets', function(request, response) {
   		var len = players.length;
 
   		sattoloCycle(targets);
-  		console.log(targets)
 
   		db.collection('games').update({gameID:gameID}, {$set:{targets: targets,started:true}}, function(err, result) {
   			if (err) return response.send('Failed to assign targets');
@@ -389,145 +397,97 @@ app.post('/assassinate', function(request, response) {
 	var newTarget;
 	var indexToRemove;
 
-	// TODO: use face recognition to verify success !!!!!!!!!
+	if (request.files.length === 0) {
+		return response.send('You have to upload a photo');
+	}
 
-	// assign next target
-	db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
-		if (err) return response.send('fail');
-		var playersInGame = arr[0].players;
+	var imgPath = request.files[0]["path"];
+	
+	var link = service_root + "faces/recognize.json?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + target + "@snapspace&urls=http://www.tvchoicemagazine.co.uk/sites/default/files/imagecache/interview_image/intex/michael_emerson.png"; 
+	// + server + imgPath;
+		// above link wont work on local server!
 
-		// find new target
-		for (var i in playersInGame) {
-			if (target == playersInGame[i]) {
-				newTarget = arr[0].targets[i];
-				indexToRemove = i;
-			}
+	unirest.get(link, function(faceRecogResponse) {
+		if (faceRecogResponse.error) {
+			return response.send('Failure to recognize face');
 		}
-
-		// delete target and target's target from arrays	
-		playersInGame.splice(indexToRemove, 1);
-		arr[0].targets.splice(indexToRemove, 1);
-
-		// if self assigned as target, player has won
-		if (username == newTarget) {
-			playersInGame = [username];
-
-			db.collection('games').update({gameID:gameID}, {$set: {started:username,players:playersInGame}, $addToSet: {dead:target}}, function(err, result) {
-				if (err) return response.send('failure in ending game');
-
-				return response.redirect('renderLobby?gameID=' + gameID);
-			});
+		// api can give success response, but not have detected any face
+		else if (!faceRecogResponse.body.photos[0].tags.uids) {
+			request.session.killFailed = true;
+			console.log('no face detected. see image at ' + imgPath);
+			return response.redirect('renderLobby?gameID=' + gameID);
 		}
-		else {
-			// set new target
-			for (var i in playersInGame) {
-				if (username == playersInGame[i]) {
-					arr[0].targets[i] = newTarget;
+		
+		var uid = [];
+		var threshold = [];
+		var confidence = [];
+
+		for (var i in faceRecogResponse.body.photos[0].tags) {
+			if (faceRecogResponse.body.photos[0].tags[i].uids) { // has a guess who it is
+				for (var j in faceRecogResponse.body.photos[0].tags[i].uids) {
+					uid.push(faceRecogResponse.body.photos[0].tags[i].uids[j].uid);
+					confidence.push(faceRecogResponse.body.photos[0].tags[i].uids[j].confidence);
+					threshold.push(faceRecogResponse.body.photos[0].tags[i].threshold);
 				}
 			}
-
-			db.collection('games').update({gameID:gameID}, {$set: {players:playersInGame, targets:arr[0].targets}, $addToSet: {dead:target}}, function(err, result) {
-				if (err) return response.send('fail2');
-
-				else return response.redirect("renderLobby?gameID=" + gameID);
-			});
 		}
- 	});
 
-});
+		// search through uid[] and see if target is in there
+		for (var i in uid) {
+			if (target + "@snapspace" == uid[i] && confidence[i] > threshold[i]) { // got em!
+				// assign next target
+				db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
+					if (err) return response.send('fail');
 
-/****************************************************************************************************************************/
-/****************************************************************************************************************************/
-/*************************************** ALL OF THE FOLLOW CODE WILL BE CHANGED *********************************************/
-/****************************************************************************************************************************/
-/****************************************************************************************************************************/
-// takes login and gameID from client
-// eliminates client's target from db 
-// and assigns new target to user
-app.post('/nextTarget', function(request, response) {
-	response.header("Access-Control-Allow-Origin", "*");
-  	response.header("Access-Control-Allow-Headers", "X-Requested-With");
+					var playersInGame = arr[0].players;
 
-  	var login = request.body.login;
-  	var gameID = Number(request.body.gameID);
-  	var targetName;
-  	var newTarget;
-  	var cursor = db.collection('players');
-
-  	cursor.find({"login":login, "gameID":gameID}).toArray(function(err, arr){
-  		// target = arr[0]["target"];
-  		targetName = arr[0]["target"];
-
-  		
-  		cursor.find({"login":targetName,"gameID":gameID}).toArray(function(err, arr2) {
-  			newTarget = arr2[0]["target"];
-  			// if (newTarget == null) {
-	  		// 	// if only one player left in gameID, must be winner
-	  		// 	cursor.find({"gameID":gameID}).toArray(function(err, arr3) {
-	  		// 		if (arr2.length === 1) {
-	  		// 			response.send('You won!');
-	  		// 		}
-	  		// 	});
-  			// }
-  			// else {
-		  		cursor.remove({"login":targetName,"gameID":gameID});
-		  		cursor.update(
-		  			{"login":login, "gameID":gameID},
-		  			{
-		  				$set: {
-		  					"target": newTarget
-		  				}
-		  			}
-		  		)
-		  		// if only one player left in gameID, must be winner
-	  			cursor.find({"gameID":gameID}).toArray(function(err, arr3) {
-	  				if (arr3.length === 1) {
-	  					cursor.remove({});
-	  					response.send('You won!');
-	  				}
-	  				else {
-		  				response.send(newTarget);
-	  				}
-	  			});
-		  	// }
-  		});
-  		
-  	});
-});
-
-// To recognize a face
-// TODO: merge with assassinate button
-app.post('/assassinate', function(request, response){ 
-	unirest.get(service_root + "faces/recognize?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + "emerson" + "&urls=https://peaceful-cove-69430.herokuapp.com/images/d6a3d42826dea771f2e6c09f41a0df7b" + "&namespace=snapspace",
-				function(faceRecogResponse) {
-
-					if(faceRecogResponse.error) {
-						return response.status(500).send(faceRecogResponse.error);
-					}
-					// API can give success response, but not have detected any face
-					else if (!faceRecogResponse.body.photos[0].tags || !faceRecogResponse.body.photos[0].tags[0]) {
-						return response.status(400).send({message: "Sorry no faces detected"});
-					}
-
-					var uid = [];
-
-
-					for (var i in faceRecogResponse.body.photos[0].tags) {	
-						if (faceRecogResponse.body.photos[0].tags[i].uids) { // api has a guess who it is
-							for (var j in faceRecogResponse.body.photos[0].tags[i].uids) {
-								uid.unshift(faceRecogResponse.body.photos[0].tags[i].uids[j].uid);
-							}
+					// find new target
+					for (var i in playersInGame) {
+						if (target == playersInGame[i]) {
+							newTarget = arr[0].targets[i];
+							indexToRemove = i;
 						}
 					}
 
-					console.log(faceRecogResponse.body)
-					response.send(faceRecogResponse.body);
-				});
+					// delete target and target's target from arrays	
+					playersInGame.splice(indexToRemove, 1);
+					arr[0].targets.splice(indexToRemove, 1);
+
+					// if self assigned as target, player has won
+					if (username == newTarget) {
+						playersInGame = [username];
+
+						db.collection('games').update({gameID:gameID}, {$set: {started:username,players:playersInGame}, $addToSet: {dead:target}}, function(err, result) {
+							if (err) return response.send('failure in ending game');
+
+							return response.redirect('renderLobby?gameID=' + gameID);
+						});
+					}
+					else {
+						// set new target
+						for (var i in playersInGame) {
+							if (username == playersInGame[i]) {
+								arr[0].targets[i] = newTarget;
+							}
+						}
+
+						db.collection('games').update({gameID:gameID}, {$set: {players:playersInGame, targets:arr[0].targets}, $addToSet: {dead:target}}, function(err, result) {
+							if (err) return response.send('fail2');
+
+							else return response.redirect("renderLobby?gameID=" + gameID);
+						});
+					}
+			 	});
+			}
+			else {			// kill failed
+				request.session.killFailed = true;
+				return response.redirect('renderLobby?gameID=' + gameID);
+			}
+		}
+	});
+
 
 });
-
-
-
 
 app.get('/', function(request, response) {
 	response.set('Content-Type', 'text/html');
