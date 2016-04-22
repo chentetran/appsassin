@@ -226,7 +226,7 @@ app.post('/joinGame', function(request, response) {
 		}
 
 		if (games.length == 1 && games[0].started == false) { // join lobby
-			db.collection('games').update({gameID:gameID}, {$addToSet: {players: username}}, function(err, result) {
+			db.collection('games').update({gameID:gameID}, {$addToSet: {players: username}, $push: {status:"Alive"}}, function(err, result) {
 									   		if (err) response.send('Failure to join game lobby');
 									   		addGameID(username, gameID);
 									   		request.session.gameID = gameID;
@@ -240,7 +240,7 @@ app.post('/joinGame', function(request, response) {
 				gameID:gameID,
 				players:[username],
 				targets:[],
-				status:[],
+				status:["Alive"],
 				started:false,
 				date:date
 			}
@@ -323,7 +323,6 @@ app.post('/assignTargets', function(request, response) {
   			response.redirect('inGame');
   			});
   		});
-
   	});	
 });
 
@@ -391,21 +390,42 @@ app.post('/assassinate', function(request, response) {
 				indexToRemove = i;
 			}
 		}
-		// delete target and target's target from arrays	
-		playersInGame.splice(indexToRemove, 1);
-		arr[0].targets.splice(indexToRemove, 1);
 
-		// set new target
-		for (var i in playersInGame) {
-			if (username == playersInGame[i]) {
-				arr[0].targets[i] = newTarget;
-			}
+		// if self assigned as target, player has won
+		if (username == newTarget) {
+			// delete game from games collection
+			db.collection('games').deleteOne({gameID:gameID}, function(err, res) {
+				if (err) return response.send('Failed to delete game');
+			
+				return response.send("You won!");
+			});
+
+			// delete game from player's games list
+			db.collection('players').update({username:username},{$pull:{games:gameID}}, function(err, result) {
+				if (err) return response.send('Failure to delete game from game list of player');
+			});
 		}
 
-		db.collection('games').update({gameID:gameID}, {$set {players:playersInGame, targets:arr[0].targets}}, function(err, result) {
-			if (err) return response.send('fail2');
+		// delete game from player's games list
+		db.collection('players').update({username:target},{$pull:{games:gameID}}, function(err, result) {
+			if (err) return response.send('Failure to delete game from game list of player');
+	
+			// delete target and target's target from arrays	
+			playersInGame.splice(indexToRemove, 1);
+			arr[0].targets.splice(indexToRemove, 1);
 
-			response.send(newTarget);
+			// set new target
+			for (var i in playersInGame) {
+				if (username == playersInGame[i]) {
+					arr[0].targets[i] = newTarget;
+				}
+			}
+
+			db.collection('games').update({gameID:gameID}, {$set: {players:playersInGame, targets:arr[0].targets}}, function(err, result) {
+				if (err) return response.send('fail2');
+
+				else response.redirect("inGame");
+			});
 		});
  	});
 
