@@ -83,6 +83,10 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
 
 // Register for an account
 app.post('/register', function(request, response) {
+	res.header('Access-Control-Allow-Origin', '*');
+	res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
+	res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+
 	request.session.username = request.body.username;
 
 	var username = request.body.username;
@@ -403,6 +407,10 @@ function sattoloCycle(items) {
 }
 
 app.post('/assassinate', function(request, response) {
+	res.header('Access-Control-Allow-Origin', '*');
+	res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
+	res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+	
 	var username = request.session.username;
 	var gameID = request.session.gameID;
 	var target = request.session.target;
