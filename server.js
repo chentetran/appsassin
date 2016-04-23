@@ -81,6 +81,9 @@ var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
 // }
 
 // TODO: if new player registers for acc and uses same photo as someone else, other person's name will be overwritten in namespace. fix!
+	// is this really a problem? should try it again
+
+// TODO: make it so images are POSTed directly to skybio. Or use Amazon S3?
 
 // Register for an account
 app.post('/register', function(request, response) {
