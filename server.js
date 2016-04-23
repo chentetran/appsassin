@@ -126,7 +126,8 @@ app.post('/register', function(request, response) {
 		}
 		console.log(imgPath);
 		var imgPath = request.files[0]["path"];
-		var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
+		var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=http://ia.media-imdb.com/images/M/MV5BMTg3OTk0MzMwMl5BMl5BanBnXkFtZTcwMjQ2NDg0Nw@@._V1_UY317_CR15,0,214,317_AL_.jpg"
+		//+ server + imgPath;
 		// for local server:
 		// var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=http://www.tvchoicemagazine.co.uk/sites/default/files/imagecache/interview_image/intex/michael_emerson.png";
 		
@@ -185,7 +186,7 @@ app.post('/register', function(request, response) {
 														});
 	
 														response.set('Content-Type', 'text/html');
-														response.redirect('/home');
+														return response.redirect('/home');
 													});
 						});
 		});
