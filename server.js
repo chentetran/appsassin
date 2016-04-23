@@ -124,7 +124,7 @@ app.post('/register', function(request, response) {
 			"name":name,
 			"games":[]
 		}
-
+		console.log(imgPath);
 		var imgPath = request.files[0]["path"];
 		var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
 		// for local server:
