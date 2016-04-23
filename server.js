@@ -485,12 +485,12 @@ app.post('/assassinate', function(request, response) {
 						}
 					}
 
-					// delete target and target's target from arrays	
-					playersInGame.splice(indexToRemove, 1);
-					arr[0].targets.splice(indexToRemove, 1);
-
 					// if self assigned as target, player has won
 					if (username == newTarget) {
+						// delete target and target's target from arrays	
+						playersInGame.splice(indexToRemove, 1);
+						arr[0].targets.splice(indexToRemove, 1);
+
 						playersInGame = [username];
 
 						db.collection('games').update({gameID:gameID}, {$set: {started:username,players:playersInGame}, $addToSet: {dead:target}}, function(err, result) {
