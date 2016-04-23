@@ -164,13 +164,11 @@ app.post('/register', function(request, response) {
 										console.log(tagSaveResponse.body)
 
 										// start face training
-										unirest.get(service_root + "faces/train?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + request.body.userid + "@snapspace",
+										unirest.get(service_root + "faces/train?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + username + "@snapspace",
 													function(faceTrainResponse) {
 														if (faceTrainResponse.error) {
 															return response.status(500).send(faceTrainResponse.error);
 														}
-
-														// TODO: why does it not train when its an image link from our server?
 
 														console.log('successfully trained a face for ' + username);
 
@@ -388,31 +386,23 @@ app.get('/renderLobby', function(request, response) {
 app.post('/assignTargets', function(request, response) {
   	gameID = request.session.gameID;
 
-  	// train users again because original attempt to train doesnt usually work... TODO: fix this.
-  	unirest.get(service_root + "faces/train?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=all@snapspace",
-  				function(faceTrainResponse) {
-  					if (faceTrainResponse.error) return response.send(faceTrainResponse.error);
+  	db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
+  		if (err) return response.send('Failed searching game');
 
-					  	db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
-					  		if (err) return response.send('Failed searching game');
+  		var players = arr[0].players;
+  		var targets = arr[0].players;
+  		var temp;
+  		var len = players.length;
 
-					  		var players = arr[0].players;
-					  		var targets = arr[0].players;
-					  		var temp;
-					  		var len = players.length;
+  		sattoloCycle(targets);
 
-					  		sattoloCycle(targets);
-
-					  		db.collection('games').update({gameID:gameID}, {$set:{targets: targets,started:true}}, function(err, result) {
-					  			if (err) return response.send('Failed to assign targets');
-					  			db.collection('games').find({gameID:gameID}).toArray(function(error, res) {
-					  				response.redirect('renderLobby?gameID=' + gameID);
-					  			});
-					  		});
-					  	});	
-
-  				});
-
+  		db.collection('games').update({gameID:gameID}, {$set:{targets: targets,started:true}}, function(err, result) {
+  			if (err) return response.send('Failed to assign targets');
+  			db.collection('games').find({gameID:gameID}).toArray(function(error, res) {
+  				response.redirect('renderLobby?gameID=' + gameID);
+  			});
+  		});
+  	});	
 });
 
 function sattoloCycle(items) {
