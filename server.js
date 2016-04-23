@@ -454,6 +454,7 @@ app.post('/assassinate', function(request, response) {
 		var uid = [];
 		var threshold = [];
 		var confidence = [];
+		var targetKilled = false;
 
 		for (var i in faceRecogResponse.body.photos[0].tags) {
 			if (faceRecogResponse.body.photos[0].tags[i].uids) { // has a guess who it is
@@ -464,16 +465,16 @@ app.post('/assassinate', function(request, response) {
 				}
 			}
 		}
-		console.log(faceRecogResponse.body.photos[0].tags);
-		console.log(uid);
-		console.log(target)
+	
 		// search through uid[] and see if target is in there
 		for (var i in uid) {
 			if (target + "@snapspace" == uid[i] && confidence[i] > threshold[i]) { // got em!
-				console.log('in here')
+				targetKilled = true;
 				// assign next target
 				db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
-					if (err) return response.send('fail');
+					if (err) {
+						return response.send('fail');
+					}
 
 					var playersInGame = arr[0].players;
 
@@ -485,16 +486,18 @@ app.post('/assassinate', function(request, response) {
 						}
 					}
 
+					// delete target and target's target from arrays	
+					playersInGame.splice(indexToRemove, 1);
+					arr[0].targets.splice(indexToRemove, 1);
+
 					// if self assigned as target, player has won
 					if (username == newTarget) {
-						// delete target and target's target from arrays	
-						playersInGame.splice(indexToRemove, 1);
-						arr[0].targets.splice(indexToRemove, 1);
-
 						playersInGame = [username];
 
 						db.collection('games').update({gameID:gameID}, {$set: {started:username,players:playersInGame}, $addToSet: {dead:target}}, function(err, result) {
-							if (err) return response.send('failure in ending game');
+							if (err) {
+								return response.send('failure in ending game');
+							}
 
 							return response.redirect('renderLobby?gameID=' + gameID);
 						});
@@ -508,18 +511,24 @@ app.post('/assassinate', function(request, response) {
 						}
 
 						db.collection('games').update({gameID:gameID}, {$set: {players:playersInGame, targets:arr[0].targets}, $addToSet: {dead:target}}, function(err, result) {
-							if (err) return response.send('fail2');
+							if (err) {
+								return response.send('fail2');
+							}
 
-							else return response.redirect("renderLobby?gameID=" + gameID);
+							else {
+								return response.redirect("renderLobby?gameID=" + gameID);
+							}
 						});
 					}
 			 	});
+			 	break;
 			}
 		}
 		// kill failed
-		console.log('kill failed');
-		request.session.killFailed = true;
-		return response.redirect('renderLobby?gameID=' + gameID);
+		if (!targetKilled) {
+			request.session.killFailed = true;
+			return response.redirect('renderLobby?gameID=' + gameID);
+		}
 	
 	});
 
