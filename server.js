@@ -356,12 +356,12 @@ app.get('/renderLobby', function(request, response) {
 			if (playersInGame[0].players.length == 1) return response.send(indexPage + "</ul><p>Can't start with only one player</p></body></html>");
 			request.session.gameID = gameID;
 			indexPage += "<form method='post' enctype='multipart/form-data' action='" + server + "assignTargets'><input type='submit' value='Start Game'></form>" + "</body></html>"
-			indexPage += "</ul></body></html>";
+			indexPage += "</ul><p><a href='" + server + "home'>Return to home</a></p></body></html>";
 			response.send(indexPage);
 		}
 		else { // game has ended
 			indexPage += "<h2>The winner is " + playersInGame[0].started + "</h2>";
-			indexPage += "</ul></body></html>";
+			indexPage += "</ul><p><a href='" + server + "home'>Return to home</a></p></body></html>";
 			response.send(indexPage);
 		}
 
@@ -446,12 +446,13 @@ app.post('/assassinate', function(request, response) {
 		var confidence = [];
 		var targetKilled = false;
 
+		// TODO: this loop is unnecessary because only one uid should be returned
 		for (var i in faceRecogResponse.body.photos[0].tags) {
 			if (faceRecogResponse.body.photos[0].tags[i].uids) { // has a guess who it is
 				for (var j in faceRecogResponse.body.photos[0].tags[i].uids) {
 					uid.push(faceRecogResponse.body.photos[0].tags[i].uids[j].uid);
-					confidence.push(faceRecogResponse.body.photos[0].tags[i].uids[j].confidence);
-					threshold.push(faceRecogResponse.body.photos[0].tags[i].threshold);
+					// confidence.push(faceRecogResponse.body.photos[0].tags[i].uids[j].confidence);
+					// threshold.push(faceRecogResponse.body.photos[0].tags[i].threshold);
 				}
 			}
 		}
