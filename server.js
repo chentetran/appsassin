@@ -131,15 +131,11 @@ app.post('/register', function(request, response) {
 		unirest.get(link,
 					function(faceDetectResponse) {
 						if (faceDetectResponse.error) {
-							console.log('faceDetectResponse error');
 							return response.status(500).send({message: "Error in face detection"});
 						}
 
 						var body = faceDetectResponse.body;
 						var tags = "";
-
-						console.log("FACE DETECT response")
-						console.log(faceDetectResponse.body);
 
 						// user should send one photo with only one face for calibration
 						if (body.photos[0].tags) { 
@@ -164,8 +160,6 @@ app.post('/register', function(request, response) {
 											return response.status(500).send(tagSaveResponse.error);										
 										}
 
-										console.log(tagSaveResponse.body)
-
 										// start face training
 										unirest.get(service_root + "faces/train?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + username + "@snapspace",
 													function(faceTrainResponse) {
@@ -174,8 +168,6 @@ app.post('/register', function(request, response) {
 														}
 
 														console.log('successfully trained a face for ' + username);
-
-														console.log(faceTrainResponse.body);
 
 														// insert player to db
 														db.collection('players').insert(toInsert, function(err, player){
@@ -448,7 +440,7 @@ app.post('/assassinate', function(request, response) {
 			console.log('no face detected. see image at ' + imgPath);
 			return response.redirect('renderLobby?gameID=' + gameID);
 		}
-		console.log(faceRecogResponse);
+
 		var uid = [];
 		var threshold = [];
 		var confidence = [];
@@ -467,7 +459,8 @@ app.post('/assassinate', function(request, response) {
 	
 		// search through uid[] and see if target is in there
 		for (var i in uid) {
-			if (target + "@snapspace" == uid[i] && confidence[i] > threshold[i]) { // got em!
+			if (target + "@snapspace" == uid[i]) { // got em!
+				//&& confidence[i] > threshold[i] <--- this doesn't work??
 				targetKilled = true;
 				// assign next target
 				db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
