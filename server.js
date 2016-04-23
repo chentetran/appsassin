@@ -121,8 +121,7 @@ app.post('/register', function(request, response) {
 		}
 		console.log(imgPath);
 		var imgPath = request.files[0]["path"];
-		var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=http://ia.media-imdb.com/images/M/MV5BMTg3OTk0MzMwMl5BMl5BanBnXkFtZTcwMjQ2NDg0Nw@@._V1_UY317_CR15,0,214,317_AL_.jpg"
-		//+ server + imgPath;
+		var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
 		// for local server:
 		// var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=http://www.tvchoicemagazine.co.uk/sites/default/files/imagecache/interview_image/intex/michael_emerson.png";
 		
@@ -231,7 +230,7 @@ app.get('/home', function(request, response) {
 					  '<p>Enter Game ID: <input type="text" name="gameID"></p>' + 
 					  '<input type="submit" value="Enter">';
 
-		indexPage += games + content + "<a href='" + server + "'>Return to login</a></body></html>"
+		indexPage += games + content + "<p><a href='" + server + "'>Return to login</a></p></body></html>"
 		response.send(indexPage);
 	});
 
@@ -353,7 +352,7 @@ app.get('/renderLobby', function(request, response) {
 				}
 
 
-				indexPage += "<a href='" + server + "home'>Return to home</a></body></html>";
+				indexPage += "<p><a href='" + server + "home'>Return to home</a></p></body></html>";
 				response.send(indexPage);
 			});
 
