@@ -87,7 +87,7 @@ app.post('/register', function(request, response) {
 	response.header('Access-Control-Allow-Origin', '*');
 	response.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
 	response.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
-	
+
 	request.session.username = request.body.username;
 
 	var username = request.body.username;
@@ -231,7 +231,7 @@ app.get('/home', function(request, response) {
 					  '<p>Enter Game ID: <input type="text" name="gameID"></p>' + 
 					  '<input type="submit" value="Enter">';
 
-		indexPage += games + content + "</body></html>"
+		indexPage += games + content + "<a href='" + server + "'>Return to login</a></body></html>"
 		response.send(indexPage);
 	});
 
@@ -353,7 +353,7 @@ app.get('/renderLobby', function(request, response) {
 				}
 
 
-				indexPage += "</body></html>";
+				indexPage += "<a href='" + server + "home'>Return to home</a></body></html>";
 				response.send(indexPage);
 			});
 
