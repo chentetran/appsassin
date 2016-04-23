@@ -358,7 +358,7 @@ app.get('/renderLobby', function(request, response) {
 
 	  	}
 		else if (playersInGame[0].started == false) { // game hasn't started
-			if (playersInGame.players.length == 1) return response.send(indexPage + "</ul><p>Can't start with only one player</p></body></html>");
+			if (playersInGame[0].players.length == 1) return response.send(indexPage + "</ul><p>Can't start with only one player</p></body></html>");
 			request.session.gameID = gameID;
 			indexPage += "<form method='post' enctype='multipart/form-data' action='" + server + "assignTargets'><input type='submit' value='Start Game'></form>" + "</body></html>"
 			indexPage += "</ul></body></html>";
