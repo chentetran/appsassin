@@ -140,6 +140,9 @@ app.post('/register', function(request, response) {
 						var body = faceDetectResponse.body;
 						var tags = "";
 
+						console.log("FACE DETECT response")
+						console.log(faceDetectResponse.body);
+
 						// user should send one photo with only one face for calibration
 						if (body.photos[0].tags) { 
 							if (body.photos[0].tags.length > 1) {
@@ -163,6 +166,8 @@ app.post('/register', function(request, response) {
 											return response.status(500).send(tagSaveResponse.error);										
 										}
 
+										console.log(tagSaveResponse.body)
+
 										// start face training
 										unirest.get(service_root + "faces/train?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + request.body.userid + "@snapspace",
 													function(faceTrainResponse) {
@@ -171,6 +176,8 @@ app.post('/register', function(request, response) {
 														}
 
 														console.log('successfully trained a face for ' + username);
+
+														console.log(faceTrainResponse.body);
 
 														// insert player to db
 														db.collection('players').insert(toInsert, function(err, player){
