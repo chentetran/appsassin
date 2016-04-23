@@ -463,6 +463,7 @@ app.post('/assassinate', function(request, response) {
 				}
 			}
 		}
+		console.log(uid);
 	
 		// search through uid[] and see if target is in there
 		for (var i in uid) {
