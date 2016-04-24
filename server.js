@@ -208,7 +208,7 @@ app.get('/home', function(request, response) {
 	// Listing games
 	db.collection('players').find({username:username}).toArray(function(err, arr) {
 		if (err) return response.send("Error listing games");
-
+		console.log(arr)
 		for (var i in arr[0].games) {
 			game = arr[0].games[i];
 			games += "<li><a href='" + server + "renderLobby?gameID=" + game + "'>Game " + game + "</a></li>";
