@@ -448,8 +448,8 @@ app.post('/assassinate', function(request, response) {
 			if (faceRecogResponse.body.photos[0].tags[i].uids) { // has a guess who it is
 				for (var j in faceRecogResponse.body.photos[0].tags[i].uids) {
 					uid.push(faceRecogResponse.body.photos[0].tags[i].uids[j].uid);
-					// confidence.push(faceRecogResponse.body.photos[0].tags[i].uids[j].confidence);
-					// threshold.push(faceRecogResponse.body.photos[0].tags[i].threshold);
+					confidence.push(faceRecogResponse.body.photos[0].tags[i].uids[j].confidence);
+					threshold.push(faceRecogResponse.body.photos[0].tags[i].threshold);
 				}
 			}
 		}
@@ -457,7 +457,7 @@ app.post('/assassinate', function(request, response) {
 
 		// search through uid[] and see if target is in there
 		for (var i in uid) {
-			if (target + "@snapspace" == uid[i]) { // got em!
+			if (target + "@snapspace" == uid[i] && confidence[i] > threshold[i]) { // got em!
 				//&& confidence[i] > threshold[i] <--- this doesn't work??
 				targetKilled = true;
 				// assign next target
