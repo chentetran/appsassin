@@ -125,9 +125,7 @@ app.post('/register', function(request, response) {
 		console.log(imgPath);
 		var imgPath = request.files[0]["path"];
 		var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=" + server + imgPath;
-		// for local server:
-		// var link = service_root + "faces/detect?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&urls=http://www.tvchoicemagazine.co.uk/sites/default/files/imagecache/interview_image/intex/michael_emerson.png";
-		
+
 		unirest.get(link,
 					function(faceDetectResponse) {
 						if (faceDetectResponse.error) {
@@ -385,19 +383,22 @@ app.post('/assignTargets', function(request, response) {
   	db.collection('games').find({gameID:gameID}).toArray(function(err, arr) {
   		if (err) return response.send('Failed searching game');
 
-  		var players = arr[0].players;
-  		var targets = arr[0].players;
-  		var temp;
-  		var len = players.length;
+  		if (arr[0].started == false) {
+	  		var players = arr[0].players;
+	  		var targets = arr[0].players;
+	  		var temp;
+	  		var len = players.length;
 
-  		sattoloCycle(targets);
+	  		sattoloCycle(targets);
 
-  		db.collection('games').update({gameID:gameID}, {$set:{targets: targets,started:true}}, function(err, result) {
-  			if (err) return response.send('Failed to assign targets');
-  			db.collection('games').find({gameID:gameID}).toArray(function(error, res) {
-  				response.redirect('renderLobby?gameID=' + gameID);
-  			});
-  		});
+	  		db.collection('games').update({gameID:gameID}, {$set:{targets: targets,started:true}}, function(err, result) {
+	  			if (err) return response.send('Failed to assign targets');
+	  			db.collection('games').find({gameID:gameID}).toArray(function(error, res) {
+	  				response.redirect('renderLobby?gameID=' + gameID);
+	  			});
+	  		}); 			
+  		}
+  		else return response.send('Game already started');
   	});	
 });
 
@@ -446,7 +447,6 @@ app.post('/assassinate', function(request, response) {
 		var confidence = [];
 		var targetKilled = false;
 
-		// TODO: this loop is unnecessary because only one uid should be returned
 		for (var i in faceRecogResponse.body.photos[0].tags) {
 			if (faceRecogResponse.body.photos[0].tags[i].uids) { // has a guess who it is
 				for (var j in faceRecogResponse.body.photos[0].tags[i].uids) {
