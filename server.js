@@ -20,9 +20,7 @@ var allowCrossDomain = function(req, res, next) {
     }
 };
 
-
 var server = "http://peaceful-cove-69430.herokuapp.com/";
-// var server = "http://localhost:3000/"
 
 var app = express();
 
@@ -48,7 +46,6 @@ var MongoClient = require('mongodb').MongoClient, format = require('util').forma
 var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
   db = databaseConnection;
 });
-
 
 // This is a middleware that we will use on routes where
 // we _require_ that a user is logged in, such as the /secret url
@@ -457,7 +454,7 @@ app.post('/assassinate', function(request, response) {
 			}
 		}
 		console.log(uid);
-	
+
 		// search through uid[] and see if target is in there
 		for (var i in uid) {
 			if (target + "@snapspace" == uid[i]) { // got em!
@@ -522,10 +519,7 @@ app.post('/assassinate', function(request, response) {
 			request.session.killFailed = true;
 			return response.redirect('renderLobby?gameID=' + gameID);
 		}
-	
 	});
-
-
 });
 
 app.get('/', function(request, response) {
