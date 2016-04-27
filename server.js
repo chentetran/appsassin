@@ -425,7 +425,7 @@ app.post('/assassinate', function(request, response) {
 
 	var imgPath = request.files[0]["path"];
 	
-	var link = service_root + "faces/recognize.json?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + target + "@snapspace&urls=" + server + imgPath;
+	var link = service_root + "faces/recognize.json?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&detector=aggressive&uids=" + target + "@snapspace&urls=" + server + imgPath;
 
 	unirest.get(link, function(faceRecogResponse) {
 		if (faceRecogResponse.error) {
@@ -448,8 +448,7 @@ app.post('/assassinate', function(request, response) {
 			if (faceRecogResponse.body.photos[0].tags[i].uids) { // has a guess who it is
 				for (var j in faceRecogResponse.body.photos[0].tags[i].uids) {
 					uid.push(faceRecogResponse.body.photos[0].tags[i].uids[j].uid);
-					confidence.push(faceRecogResponse.body.photos[0].tags[i].uids[j].confidence);
-					threshold.push(faceRecogResponse.body.photos[0].tags[i].threshold);
+					confidence.push(faceRecogResponse.body.photos[0].tags[i].threshold);
 				}
 			}
 		}
