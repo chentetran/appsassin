@@ -20,7 +20,9 @@ var allowCrossDomain = function(req, res, next) {
     }
 };
 
+
 var server = "http://peaceful-cove-69430.herokuapp.com/";
+// var server = "http://localhost:3000/"
 
 var app = express();
 
@@ -46,6 +48,7 @@ var MongoClient = require('mongodb').MongoClient, format = require('util').forma
 var db = MongoClient.connect(mongoUri, function(error, databaseConnection) {
   db = databaseConnection;
 });
+
 
 // This is a middleware that we will use on routes where
 // we _require_ that a user is logged in, such as the /secret url
@@ -208,7 +211,7 @@ app.get('/home', function(request, response) {
 	// Listing games
 	db.collection('players').find({username:username}).toArray(function(err, arr) {
 		if (err) return response.send("Error listing games");
-		console.log(arr)
+
 		for (var i in arr[0].games) {
 			game = arr[0].games[i];
 			games += "<li><a href='" + server + "renderLobby?gameID=" + game + "'>Game " + game + "</a></li>";
@@ -425,7 +428,7 @@ app.post('/assassinate', function(request, response) {
 
 	var imgPath = request.files[0]["path"];
 	
-	var link = service_root + "faces/recognize.json?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&detector=aggressive&uids=" + target + "@snapspace&urls=" + server + imgPath;
+	var link = service_root + "faces/recognize.json?api_key=" + sky_api_key + "&api_secret=" + sky_api_secret + "&uids=" + target + "@snapspace&detector=aggressive&urls=" + server + imgPath;
 
 	unirest.get(link, function(faceRecogResponse) {
 		if (faceRecogResponse.error) {
@@ -448,15 +451,16 @@ app.post('/assassinate', function(request, response) {
 			if (faceRecogResponse.body.photos[0].tags[i].uids) { // has a guess who it is
 				for (var j in faceRecogResponse.body.photos[0].tags[i].uids) {
 					uid.push(faceRecogResponse.body.photos[0].tags[i].uids[j].uid);
-					confidence.push(faceRecogResponse.body.photos[0].tags[i].threshold);
+					// confidence.push(faceRecogResponse.body.photos[0].tags[i].uids[j].confidence);
+					// threshold.push(faceRecogResponse.body.photos[0].tags[i].threshold);
 				}
 			}
 		}
 		console.log(uid);
-
+	
 		// search through uid[] and see if target is in there
 		for (var i in uid) {
-			if (target + "@snapspace" == uid[i] && confidence[i] > threshold[i]) { // got em!
+			if (target + "@snapspace" == uid[i]) { // got em!
 				//&& confidence[i] > threshold[i] <--- this doesn't work??
 				targetKilled = true;
 				// assign next target
@@ -518,7 +522,10 @@ app.post('/assassinate', function(request, response) {
 			request.session.killFailed = true;
 			return response.redirect('renderLobby?gameID=' + gameID);
 		}
+	
 	});
+
+
 });
 
 app.get('/', function(request, response) {
